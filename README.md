@@ -19,11 +19,10 @@
 
 ## 🔑 커밋 컨벤션
 => 이건 커밋할 때 메시지로 넣는거입니다.
-예를 들어 
-
-git add .
-git commit -m "feat(auth): 로그인 기능 추가"
-git push
+예를 들어 /n
+git add . /n
+git commit -m "feat(auth): 로그인 기능 추가"/n
+git push/n
 이렇게요..
 
 - [feat] 기능 추가
@@ -37,28 +36,28 @@ git push
     - A는 로그인 기능
     - B는 게시판 기능
     - C는 여행지 추천 기능 ...
-    - 
-브랜치 이름	            하는 일
-feature/login	          로그인 개발
-feature/post	          게시판 개발
-feature/recommend	      여행지 추천 기능 개발
+    - /n
+브랜치 이름	            하는 일/n
+feature/login	          로그인 개발/n
+feature/post	          게시판 개발/n
+feature/recommend	      여행지 추천 기능 개발/n
 
 - 이렇게 해서 각자 개발하고 이 작업이 다 끝나면 페이지 대로 dev 브런치로 Pull Request 보내서 병합할거라 꼭 이렇게 push pull 해주세요!
 
-git checkout dev                    # 항상 dev 기준으로!
-git checkout -b feature/login       # 브랜치 생성
-git push origin feature/login       # 원격에 올리기 
-=> origin은 목적지 원격 저장소 이름 / dev 나 feature/*이건 브랜치 이름
+git checkout dev                    # 항상 dev 기준으로!/n
+git checkout -b feature/login       # 브랜치 생성/n
+git push origin feature/login       # 원격에 올리기/n 
+=> origin은 목적지 원격 저장소 이름 / dev 나 feature/*이건 브랜치 이름/n
 
 ## 🔁 작업 흐름 예시
-1. 최신 dev 가져오기
-git checkout dev        # dev 브랜치로 이동해서, 여기서 새 브랜치를 만들 준비
-git pull origin dev     # GitHub에서 최신 내용 받아오기
-2. 기능 브랜치 만들기 (예: 로그인 기능)
-git checkout -b feature/login      # dev 기준으로 새로운 기능 브랜치 만들기
-3. 작업하고, 커밋하고, 푸시
-git add .
-git commit -m "[feat] 로그인 기능 구현"
-git push origin feature/login       #만든 브랜치를 GitHub로 올리기
+1. 최신 dev 가져오기/n
+git checkout dev        # dev 브랜치로 이동해서, 여기서 새 브랜치를 만들 준비/n
+git pull origin dev     # GitHub에서 최신 내용 받아오기/n
+2. 기능 브랜치 만들기 (예: 로그인 기능)/n
+git checkout -b feature/login      # dev 기준으로 새로운 기능 브랜치 만들기/n
+3. 작업하고, 커밋하고, 푸시/n
+git add ./n
+git commit -m "[feat] 로그인 기능 구현"/n
+git push origin feature/login       #만든 브랜치를 GitHub로 올리기/n
 
 4. GitHub에서 Pull Request 보내기 (→ dev로!) => 우선 할 수 있으신분은 하되 잘 모르시겠으면 하지마새요! 
