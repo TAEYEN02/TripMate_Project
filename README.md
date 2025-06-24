@@ -59,4 +59,8 @@ git add .
 git commit -m "[feat] 로그인 기능 구현"  
 git push origin feature/login       #만든 브랜치를 GitHub로 올리기  
 
-4. GitHub에서 Pull Request 보내기 (→ dev로!) => 우선 할 수 있으신분은 하되 잘 모르시겠으면 하지마새요! 
+4. GitHub에서 Pull Request 보내기 (→ dev로!) => 우선 할 수 있으신분은 하되 잘 모르시겠으면 하지마새요!
+
+## 주의!
+![image](https://github.com/user-attachments/assets/ad94fdbb-26a4-407f-8e26-d324ba4aed88)
+이걸 dev로 바꿔서 push 하는겁니다! master은 아닙니다.
