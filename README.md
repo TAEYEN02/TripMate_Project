@@ -63,4 +63,5 @@ git push origin feature/login       #만든 브랜치를 GitHub로 올리기
 
 ## 주의!
 ![image](https://github.com/user-attachments/assets/ad94fdbb-26a4-407f-8e26-d324ba4aed88)
+![image](https://github.com/user-attachments/assets/fe9e48c5-b972-47b1-b761-d194803906f6)  
 이걸 dev로 바꿔서 push 하는겁니다! master은 아닙니다.
