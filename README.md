@@ -36,12 +36,13 @@ git push
     - A는 로그인 기능
     - B는 게시판 기능
     - C는 여행지 추천 기능 ...
-  => 이걸
+    - 
 브랜치 이름	            하는 일
 feature/login	          로그인 개발
 feature/post	          게시판 개발
 feature/recommend	      여행지 추천 기능 개발
--> 이렇게 해서 각자 개발하고 이 작업이 다 끝나면 페이지 대로 dev 브런치로 Pull Request 보내서 병합할거라 꼭 이렇게 push pull 해주세요!
+
+- 이렇게 해서 각자 개발하고 이 작업이 다 끝나면 페이지 대로 dev 브런치로 Pull Request 보내서 병합할거라 꼭 이렇게 push pull 해주세요!
 
 git checkout dev                    # 항상 dev 기준으로!
 git checkout -b feature/login       # 브랜치 생성
