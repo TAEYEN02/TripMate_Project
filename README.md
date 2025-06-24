@@ -31,4 +31,4 @@ TripMate
     - feature/login => 로그인개발
     - feature/post => 게시판 개발
     - feature/recommend => 여행지 추천 기능 개발
-  => 이게 다 끝내면 dev로 가서 pull Request로 보내 병합할거라 무조건! 병합하기 전엔 feature로 브랜치 하세요
+  => 이게 다 끝내면 dev로 가서 pull Request로 보내 병합할거라 무조건! feature로 브랜치 하세요
