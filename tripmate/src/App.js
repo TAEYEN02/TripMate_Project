@@ -1,24 +1,19 @@
-import logo from './logo.svg';
-import './App.css';
+import PlannerPage from './pages/PlannerPage';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import Navbar from './componets/common/Navbar';
+import StartPlannerPage from './pages/StartPlannerPage';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Navbar /> {/* 네비게이션 공통 UI */}
+      <div className="p-4">
+        <Routes>
+          <Route path="/" element={<StartPlannerPage />} />
+          <Route path="/planner" element={<PlannerPage />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
