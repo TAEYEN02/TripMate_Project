@@ -4,10 +4,10 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.korea.trip.dto.TransportRequest;
 import com.korea.trip.dto.TransportResult;
 import com.korea.trip.util.BusUtil;
 import com.korea.trip.util.KorailUtil;
+import com.korea.trip.dto.TrainInfo;
 
 @Service
 public class TransportService {
@@ -20,9 +20,9 @@ public class TransportService {
         this.busUtil = busUtil;
     }
 
-    public TransportResult recommendTransport(TransportRequest request) {
-        List<String> korail = korailUtil.fetchKorail(request.getDeparture(), request.getArrival(), request.getDate());
-        List<String> bus = busUtil.fetchBus(request.getDeparture(), request.getArrival(), request.getDate());
+    public TransportResult recommendTransport(TrainInfo request) {
+        List<TrainInfo> korail = korailUtil.fetchKorail(request);
+        List<String> bus = busUtil.fetchBus(request.getDepPlaceName(), request.getArrPlaceName(), request.getDepPlandTime());
 
         TransportResult result = new TransportResult();
         result.setKorailOptions(korail);

@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.korea.trip.dto.TransportRequest;
+import com.korea.trip.dto.TrainInfo;
 import com.korea.trip.dto.TransportResult;
 import com.korea.trip.service.TransportService;
 
@@ -20,7 +20,7 @@ public class TransportController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<TransportResult> search(@RequestBody TransportRequest request) {
+    public ResponseEntity<TransportResult> search(@RequestBody TrainInfo request) {
         return ResponseEntity.ok(transportService.recommendTransport(request));
     }
 }

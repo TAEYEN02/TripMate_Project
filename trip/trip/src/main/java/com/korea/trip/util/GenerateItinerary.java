@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.korea.trip.dto.PlaceDto;
 import com.korea.trip.dto.ScheduleResponse;
+import com.korea.trip.dto.TrainInfo;
 
 @Component
 public class GenerateItinerary {
@@ -24,11 +25,15 @@ public class GenerateItinerary {
 
 	public ScheduleResponse generate(String departure, String arrival, String date, String transportType) {
 		// 1. 교통편 정보 조회 (열차/버스)
-		List<String> transportOptions = List.of();
+		List<TrainInfo> transportOptions = List.of();
 		if ("korail".equalsIgnoreCase(transportType)) {
-			transportOptions = korailUtil.fetchKorail(departure, arrival, date);
+			TrainInfo info = new TrainInfo();
+			info.setDepPlaceName(departure);
+			info.setArrPlaceName(arrival);
+			info.setDepPlandTime(date);
+			transportOptions = korailUtil.fetchKorail(info);
 		} else if ("bus".equalsIgnoreCase(transportType)) {
-			transportOptions = busUtil.fetchBus(departure, arrival, date);
+			// busUtil.fetchBus는 여전히 List<String> 반환이므로 별도 처리 필요
 		}
 
 		// 2. 이동 시간 계산 (예: 첫 교통편 기준)
