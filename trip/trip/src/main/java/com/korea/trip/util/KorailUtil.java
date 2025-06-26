@@ -1,10 +1,8 @@
 package com.korea.trip.util;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import jakarta.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -17,49 +15,131 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Component
 public class KorailUtil {
 
-	@Value("${korail.service-key}")
-	private String serviceKey;
+    @Value("${korail.service-key}")
+    private String serviceKey;
 
-	private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper mapper = new ObjectMapper();
 
-	private static final Map<String, String> STATION_CODES = Map.of("서울", "0001", "용산", "0002", "부산", "0020", "대전",
-			"0010"
-	// 필요한 만큼 추가
-	);
+    private Map<String, String> stationCodeMap = new HashMap<>();
 
-	public List<String> fetchKorail(String departure, String arrival, String date) {
+    @PostConstruct
+    public void init() {
+        stationCodeMap = fetchStationCodeMap();
+    }
+    
+    /*코레일 열차 운행 정보 조회 API 호출*/
+    public List<String> fetchKorail(String departureCode, String arrivalCode, String date) {
+        List<String> result = new ArrayList<>();
 
-		String depCode = STATION_CODES.getOrDefault(departure, departure); // 혹시 코드가 들어와도 허용
-		String arrCode = STATION_CODES.getOrDefault(arrival, arrival);
+        String url = "https://apis.data.go.kr/1613000/TrainInfoService/getStrtpntAlocFndTrainInfo"
+                + "?serviceKey=" + serviceKey
+                + "&_type=json"
+                + "&depPlaceId=" + departureCode
+                + "&arrPlaceId=" + arrivalCode
+                + "&depPlandTime=" + date + "0600"
+                + "&trainGradeCode="; // 필요 시 등급 필터링 가능
 
+        System.out.println("📤 [코레일 조회 요청]");
+        System.out.println("➡ URL: " + url);
+        System.out.println("➡ 출발지: " + departureCode + " / 도착지: " + arrivalCode + " / 날짜: " + date);
 
-		String url = "https://apis.data.go.kr/1613000/TrainInfoService/getStrtpntAlocFndTrainInfo" 
-				+ "?serviceKey="+ serviceKey 
-				+ "&numOfRows=5&pageNo=1&_type=json" 
-				+ "&depPlaceId=" + depCode 
-				+ "&arrPlaceId=" + arrCode
-				+ "&depPlandTime=" + date; // ex: 20250630
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            System.out.println("코레일 원본 응답: " + response.getBody());
+            JsonNode items = mapper.readTree(response.getBody())
+                    .path("response").path("body").path("items").path("item");
 
-		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            if (items.isArray()) {
+                for (JsonNode item : items) {
+                    String grade = item.path("trainGradeName").asText(); // KTX, ITX 등
+                    String time = item.path("depPlandTime").asText().substring(8, 12); // HHmm
+                    result.add(grade + " " + time);
+                }
+            } else if (items.isObject()) {
+                String grade = items.path("trainGradeName").asText();
+                String time = items.path("depPlandTime").asText().substring(8, 12);
+                result.add(grade + " " + time);
+            }
 
-		System.out.println("응답: " + response.getBody());
+        } catch (Exception e) {
+            System.err.println("🛑 코레일 API 응답 처리 실패: " + e.getMessage());
+            e.printStackTrace();
+        }
 
-		List<String> results = new ArrayList<>();
-		try {
-			ObjectMapper mapper = new ObjectMapper();
+        return result;
+    }
+    
 
-			JsonNode items = mapper.readTree(response.getBody()).path("response").path("body").path("items")
-					.path("item");
+    /**
+     * ✅ 전국 역 목록 수집
+     */
+    public Map<String, String> fetchStationCodeMap() {
+        Map<String, String> result = new HashMap<>();
+        String cityListUrl = "https://apis.data.go.kr/1613000/TrainInfoService/getCtyCodeList"
+                           + "?serviceKey=" + serviceKey + "&_type=json";
 
-			for (JsonNode item : items) {
-				String trainType = item.get("traingradename").asText(); // KTX, 무궁화 등
-				String time = item.get("depplandtime").asText().substring(8, 12); // HHMM
-				results.add(trainType + " " + time);
-			}
-		} catch (Exception e) {
-			throw new RuntimeException("열차 API 응답 처리 실패", e);
-		}
+        try {
+            ResponseEntity<String> cityResponse = restTemplate.getForEntity(cityListUrl, String.class);
+            JsonNode cities = mapper.readTree(cityResponse.getBody())
+                    .path("response").path("body").path("items").path("item");
 
-		return results;
-	}
+            List<String> cityCodes = new ArrayList<>();
+            if (cities.isArray()) {
+                for (JsonNode city : cities) {
+                    String cityCode = city.path("citycode").asText();
+                    cityCodes.add(cityCode);
+                }
+            }
+
+            for (String cityCode : cityCodes) {
+                String stationUrl = "https://apis.data.go.kr/1613000/TrainInfoService/getCtyAcctoTrainSttnList"
+                        + "?serviceKey=" + serviceKey
+                        + "&_type=json"
+                        + "&cityCode=" + cityCode;
+
+                try {
+                    ResponseEntity<String> stationResponse = restTemplate.getForEntity(stationUrl, String.class);
+                    JsonNode stations = mapper.readTree(stationResponse.getBody())
+                            .path("response").path("body").path("items").path("item");
+
+                    if (stations.isArray()) {
+                        for (JsonNode station : stations) {
+                            String stationName = station.path("nodename").asText(); // 수원
+                            String stationCode = station.path("nodeid").asText();   // 0001
+                            result.put(stationName, stationCode);
+                        }
+                    } else if (stations.isObject()) {
+                        String stationName = stations.path("nodename").asText();
+                        String stationCode = stations.path("nodeid").asText();
+                        result.put(stationName, stationCode);
+                    }
+
+                } catch (Exception ex) {
+                    System.err.println("🛑 [" + cityCode + "] 역 조회 실패: " + ex.getMessage());
+                }
+            }
+
+            System.out.println("✅ 역 목록 로딩 완료: " + result.size() + "개");
+
+        } catch (Exception e) {
+            System.err.println("🛑 열차 도시코드 조회 실패: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * 도시명 → 역 코드 변환
+     */
+    public String convertCityToStationCode(String cityName) {
+        return stationCodeMap.getOrDefault(cityName, cityName); // 없으면 그대로
+    }
+
+    /**
+     * 전체 역 목록 조회
+     */
+    public Map<String, String> getStationCodeMap() {
+        return stationCodeMap;
+    }
 }
