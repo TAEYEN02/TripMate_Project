@@ -24,13 +24,6 @@ public class BusUtil {
     private final RestTemplate restTemplate = new RestTemplate();
     private Map<String, List<TerminalInfo>> cityTerminalMap = new HashMap<>();
 
-    // 사전 도시명 키워드 (필요시 추가)
-    private static final Set<String> KNOWN_CITIES = Set.of(
-        "서울", "부산", "대구", "인천", "광주", "대전", "울산", 
-        "세종", "수원", "창원", "용인", "성남", "고양", "청주", 
-        "전주", "천안", "안산", "포항", "김해", "진주", "제주"
-    );
-
     @PostConstruct
     public void init() {
         cityTerminalMap = fetchTerminalMap();
@@ -79,31 +72,12 @@ public class BusUtil {
     }
 
     private String extractCityFromTerminalName(String terminalNm) {
-        String clean = terminalNm.replaceAll("고속|시외|종합|터미널|버스터미널", "").trim().toLowerCase();
-
-        for (String city : KNOWN_CITIES) {
-            if (clean.contains(city.toLowerCase())) {
-                return city;
-            }
-        }
 
         return "기타";
     }
 
     // 도시명 기준으로 터미널 ID 리스트 가져오기
     public List<String> getTerminalIdsByCity(String cityName) {
-        List<TerminalInfo> terminals = cityTerminalMap.get(cityName);
-        if (terminals == null) return List.of();
-        List<String> ids = new ArrayList<>();
-        for (TerminalInfo t : terminals) {
-            ids.add(t.getTerminalId());
-        }
-        return ids;
-    }
-
-    // 단일 터미널 ID 기준 버스 정보 조회
-    public List<BusInfo> fetchBus(String depTerminalId, String arrTerminalId, String date) {
-        List<BusInfo> results = new ArrayList<>();
 
         String url = "https://apis.data.go.kr/1613000/ExpBusInfoService/getStrtpntAlocFndExpbusInfo"
                 + "?serviceKey=" + serviceKey

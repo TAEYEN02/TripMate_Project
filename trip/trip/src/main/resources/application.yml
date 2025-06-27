@@ -1,3 +1,5 @@
+server:
+  port: 3000
 korail:
   service-key: VbGT1gAGtB0pWwVeEzwW/a3QsjZx5CnJrEwi4qXcekuJRem4Eai2V/NbbjlbVUh3DlxMu0Pg94aJrjOFqFryAQ==
 bus:

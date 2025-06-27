@@ -28,17 +28,6 @@ public class KorailUtil {
         return cityStationMap;
     }
 
-    private static final Set<String> KNOWN_CITIES = Set.of(
-        "서울", "부산", "대구", "인천", "광주", "대전", "울산",
-        "세종", "수원", "창원", "용인", "성남", "고양", "청주",
-        "전주", "천안", "안산", "포항", "김해", "진주", "제주"
-    );
-
-    // 역명 전체를 넣어야 정확히 필터링 됨 (부산역, 서울역 등)
-    private static final Set<String> MAJOR_KTX_STATIONS = Set.of(
-        "서울역", "부산역", "대전역", "동대구역", "광주송정역", "목포역", "순천역",
-        "익산역", "전주역", "천안아산역", "오송역", "신경주역", "울산역", "포항역", "광명역"
-    );
 
     @PostConstruct
     public void init() {
@@ -58,10 +47,6 @@ public class KorailUtil {
     }
 
     private String extractCityFromStationName(String stationName) {
-        String clean = stationName.replaceAll("역|선", "").trim();
-        for (String city : KNOWN_CITIES) {
-            if (clean.contains(city)) return city;
-        }
         return "기타";
     }
 
@@ -82,7 +67,7 @@ public class KorailUtil {
                     String simplifiedCity = simplifyCityName(rawCityName);
 
                     String stationUrl = "https://apis.data.go.kr/1613000/TrainInfoService/getCtyAcctoTrainSttnList"
-                            + "?serviceKey=" + serviceKey + "&_type=json&cityCode=" + cityCode;
+
 
                     try {
                         ResponseEntity<String> response = restTemplate.getForEntity(stationUrl, String.class);
@@ -122,20 +107,11 @@ public class KorailUtil {
         for (Map.Entry<String, List<StationInfo>> entry : cityStationMap.entrySet()) {
             if (entry.getKey().contains(simplified)) {
                 result.addAll(entry.getValue());
-            }
-        }
-        return result;
     }
 
     // 역명이 MAJOR_KTX_STATIONS 중 하나를 포함하는 역만 필터링 (contains 사용)
     public List<StationInfo> getMajorStationsByCityKeyword(String cityKeyword) {
-        return getStationsByCityKeyword(cityKeyword).stream()
-                .filter(s -> {
-                    String name = s.getStationName().replace("역", "").trim();
-                    return MAJOR_KTX_STATIONS.stream()
-                            .anyMatch(major -> major.replace("역", "").equals(name));
-                })
-                .toList();
+
     }
     
     public List<KorailInfo> fetchKorail(String depStationId, String arrStationId, String date) {
