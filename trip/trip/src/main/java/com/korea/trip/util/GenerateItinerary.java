@@ -24,7 +24,7 @@ public class GenerateItinerary {
 
 	public ScheduleResponse generate(String departure, String arrival, String date, String transportType) {
 		// 1. 교통편 정보 조회 (열차/버스)
-		List<String> transportOptions = List.of();
+		List<?> transportOptions = List.of();
 		if ("korail".equalsIgnoreCase(transportType)) {
 			transportOptions = korailUtil.fetchKorail(departure, arrival, date);
 		} else if ("bus".equalsIgnoreCase(transportType)) {
