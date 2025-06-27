@@ -1,66 +1,134 @@
 package com.korea.trip.service;
 
 import java.util.List;
+import java.util.Map;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 import org.springframework.stereotype.Service;
 
+import com.korea.trip.dto.BusInfo;
+import com.korea.trip.dto.KorailInfo;
+import com.korea.trip.dto.TransportRequest;
 import com.korea.trip.dto.TransportResult;
+import com.korea.trip.dto.TerminalInfo;
 import com.korea.trip.util.BusUtil;
 import com.korea.trip.util.KorailUtil;
-import com.korea.trip.dto.TrainInfo;
-import com.korea.trip.dto.BusInfo;
+import com.korea.trip.dto.StationInfo;
 
-/**
- * 교통수단 추천 서비스
- * 기차(KORAIL)와 버스 정보를 조회하여 사용자에게 교통 옵션을 제공합니다.
- */
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class TransportService {
 
-    // 기차 정보 조회를 위한 유틸리티 클래스
     private final KorailUtil korailUtil;
-    // 버스 정보 조회를 위한 유틸리티 클래스
     private final BusUtil busUtil;
 
-    /**
-     * 생성자 주입을 통한 의존성 주입
-     * @param korailUtil 기차 정보 조회 유틸리티
-     * @param busUtil 버스 정보 조회 유틸리티
-     */
+    private Map<String, List<TerminalInfo>> busTerminalMap;
+    private Map<String, List<StationInfo>> korailStationMap;
+
     public TransportService(KorailUtil korailUtil, BusUtil busUtil) {
         this.korailUtil = korailUtil;
         this.busUtil = busUtil;
     }
 
-    /**
-     * 교통수단 추천 메서드
-     * 사용자가 입력한 정보를 바탕으로 기차와 버스 옵션을 모두 조회합니다.
-     * 
-     * @param request 사용자가 입력한 교통 정보 (출발지, 도착지, 날짜 등)
-     * @return 기차와 버스 정보가 포함된 통합 결과 객체
-     */
-    public TransportResult recommendTransport(TrainInfo request) {
-        // 1단계: 기차 정보 조회
-        // KORAIL API를 통해 해당 경로의 기차 정보를 가져옵니다
-        List<TrainInfo> korail = korailUtil.fetchKorail(request);
-        
-        // 2단계: 버스 정보 조회를 위한 데이터 변환
-        // TrainInfo 객체를 BusInfo 객체로 변환합니다
-        // (두 클래스의 필드명이 다르기 때문에 변환이 필요합니다)
-        BusInfo busRequest = new BusInfo();
-        busRequest.setDepPlaceNm(request.getDepPlaceName());    // 출발지 설정
-        busRequest.setArrPlaceNm(request.getArrPlaceName());    // 도착지 설정
-        busRequest.setDepPlandTime(request.getDepPlandTime());  // 출발 시간 설정
-        
-        // 3단계: 버스 정보 조회
-        // 버스 API를 통해 해당 경로의 버스 정보를 가져옵니다
-        List<BusInfo> bus = busUtil.fetchBus(busRequest);
+    @PostConstruct
+    public void init() {
+        this.busTerminalMap = busUtil.fetchTerminalMap();
+        System.out.println("버스터미널 목록: " + busTerminalMap.keySet());
 
-        // 4단계: 결과 통합 및 반환
-        // 기차와 버스 정보를 하나의 결과 객체에 담아서 반환합니다
+        this.korailStationMap = korailUtil.getCityStationMap();
+        System.out.println("코레일 역 목록: " + korailStationMap.keySet());
+    }
+
+    public TransportResult recommendTransport(TransportRequest request) {
+        // 출발지, 도착지 도시명 정규화
+        String depCity = korailUtil.simplifyCityName(request.getDeparture());
+        String arrCity = korailUtil.simplifyCityName(request.getArrival());
+        String date = formatDate(request.getDate());
+
+        System.out.println("요청 출발 도시 (정규화): " + depCity);
+        System.out.println("요청 도착 도시 (정규화): " + arrCity);
+        System.out.println("요청 날짜: " + date);
+
+        // 🚌 버스
+        List<String> busDepIds = busUtil.getTerminalIdsByCity(depCity);
+        List<String> busArrIds = busUtil.getTerminalIdsByCity(arrCity);
+
+        List<BusInfo> busResults = new ArrayList<>();
+        for (String depId : busDepIds) {
+            for (String arrId : busArrIds) {
+                busResults.addAll(busUtil.fetchBus(depId, arrId, date));
+            }
+        }
+
+        List<String> busList = busResults.stream()
+            .filter(bus -> bus.getDepPlandTime().length() >= 12 && bus.getArrPlandTime().length() >= 12)
+            .map(bus -> String.format("%s | %s → %s | %d원 | %s → %s",
+                bus.getGradeNm(),
+                bus.getDepPlaceNm(),
+                bus.getArrPlaceNm(),
+                bus.getCharge(),
+                bus.getDepPlandTime().substring(8, 12),
+                bus.getArrPlandTime().substring(8, 12)))
+            .toList();
+
+        // 🚄 코레일 - 주요역 목록 가져오기
+        List<StationInfo> depStations = korailUtil.getMajorStationsByCityKeyword(depCity);
+        List<StationInfo> arrStations = korailUtil.getMajorStationsByCityKeyword(arrCity);
+
+        System.out.println("출발지 주요역 목록: " + depStations);
+        System.out.println("도착지 주요역 목록: " + arrStations);
+
+        List<KorailInfo> korailResults = new ArrayList<>();
+
+        // 역별로 API 호출
+        for (StationInfo depStation : depStations) {
+            for (StationInfo arrStation : arrStations) {
+                System.out.printf("코레일 API 호출 예정: 출발역 %s(%s) → 도착역 %s(%s), 날짜 %s\n",
+                    depStation.getStationName(), depStation.getStationCode(),
+                    arrStation.getStationName(), arrStation.getStationCode(),
+                    date);
+
+                List<KorailInfo> results = korailUtil.fetchKorail(depStation.getStationCode(), arrStation.getStationCode(), date);
+
+                if (results.isEmpty()) {
+                    System.out.println("→ 해당 경로에 대한 열차 정보 없음");
+                } else {
+                    System.out.println("→ 조회된 열차 정보 수: " + results.size());
+                    for (KorailInfo info : results) {
+                        System.out.println("   " + info);
+                    }
+                }
+
+                korailResults.addAll(results);
+            }
+        }
+
+        // 결과 스트림 가공
+        List<String> korailList = korailResults.stream()
+            .filter(train -> train.getDepPlandTime().length() >= 12 && train.getArrPlandTime().length() >= 12)
+            .map(train -> String.format("%s | %s역 → %s역 | %s → %s | %d원",
+                train.getTrainGrade(),
+                train.getDepStationName(),
+                train.getArrStationName(),
+                train.getDepPlandTime().substring(8, 12),
+                train.getArrPlandTime().substring(8, 12),
+                train.getAdultcharge()))
+            .toList();
+
+        // 결과 반환
         TransportResult result = new TransportResult();
-        result.setKorailOptions(korail);  // 기차 옵션 설정
-        result.setBusOptions(bus);        // 버스 옵션 설정
+        result.setBusOptions(busList.isEmpty() ? List.of("해당 날짜에 버스 정보가 없습니다.") : busList);
+        result.setKorailOptions(korailList.isEmpty() ? List.of("해당 날짜에 열차 정보가 없습니다.") : korailList);
+
         return result;
+    }
+
+    private String formatDate(String rawDate) {
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        LocalDate date = LocalDate.parse(rawDate, inputFormatter);
+        return date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     }
 }

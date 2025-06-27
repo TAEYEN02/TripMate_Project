@@ -48,6 +48,7 @@ const TransportSelectModal = ({ date, time, onSelect, onNext, mode = "go", onClo
         </div>
         {/* TransportForm 분리 사용 */}
         <TransportForm
+          key={mode}
           list={filteredList}
           selected={selected}
           onSelect={setSelected}
@@ -75,7 +76,7 @@ const TransportSelectModal = ({ date, time, onSelect, onNext, mode = "go", onClo
           </button>
         </div>
         {/* onBack이 있으면 이전 버튼을 아래쪽에 표시 (중앙 정렬, 배경/테두리 없음) */}
-        {onBack && (
+        {onBack && mode === "return" && (
           <button
             style={{
               width: "100%",
