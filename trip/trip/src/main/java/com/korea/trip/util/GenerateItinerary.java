@@ -12,45 +12,68 @@ import com.korea.trip.dto.ScheduleResponse;
 @Component
 public class GenerateItinerary {
 
-	private final KakaoPlaceUtil kakaoPlaceUtil;
-	private final KorailUtil korailUtil;
-	private final BusUtil busUtil;
+    private final KakaoPlaceUtil kakaoPlaceUtil;
+    private final KorailUtil korailUtil;
+    private final BusUtil busUtil;
 
-	public GenerateItinerary(KakaoPlaceUtil kakaoPlaceUtil, KorailUtil korailUtil, BusUtil busUtil) {
-		this.kakaoPlaceUtil = kakaoPlaceUtil;
-		this.korailUtil = korailUtil;
-		this.busUtil = busUtil;
-	}
+    public GenerateItinerary(KakaoPlaceUtil kakaoPlaceUtil, KorailUtil korailUtil, BusUtil busUtil) {
+        this.kakaoPlaceUtil = kakaoPlaceUtil;
+        this.korailUtil = korailUtil;
+        this.busUtil = busUtil;
+    }
 
-	public ScheduleResponse generate(String departure, String arrival, String date, String transportType) {
-		// 1. 교통편 정보 조회 (열차/버스)
-		List<?> transportOptions = List.of();
-		if ("korail".equalsIgnoreCase(transportType)) {
-			transportOptions = korailUtil.fetchKorail(departure, arrival, date);
-		} else if ("bus".equalsIgnoreCase(transportType)) {
-			transportOptions = busUtil.fetchBus(departure, arrival, date);
-		}
+    public ScheduleResponse generate(String departureCity, String arrivalCity, String date, String transportType) {
+        List<?> transportOptions = List.of();
 
-		// 2. 이동 시간 계산 (예: 첫 교통편 기준)
-		// TODO: 교통편 데이터 파싱해서 실제 소요시간 계산
+        // 1. 출발지와 도착지의 역 또는 터미널 ID 목록 조회
+        List<String> depIds = List.of();
+        List<String> arrIds = List.of();
 
-		// 3. 장소 추천 조회 (목적지 인근)
-		List<PlaceDto> places = kakaoPlaceUtil.searchRecommendedPlaces(arrival);
+        // 시간대 필터 (필요시 파라미터 추가해서 사용 가능)
+        TimeRange timeRange = null;
 
-		// 4. 우선순위 정렬: 관광지 > 음식점 > 카페 > 그 외
-		Map<String, Integer> priorityMap = Map.of("AT4", 1, "FD6", 2, "CE7", 3);
+        if ("korail".equalsIgnoreCase(transportType)) {
+            depIds = korailUtil.getMajorStationsByCityKeyword(departureCity).stream()
+                    .map(s -> s.getStationCode())
+                    .toList();
+            arrIds = korailUtil.getMajorStationsByCityKeyword(arrivalCity).stream()
+                    .map(s -> s.getStationCode())
+                    .toList();
 
-		places.sort(Comparator.comparingInt(p -> priorityMap.getOrDefault(p.getCategoryCode(), 99)));
+            if (!depIds.isEmpty() && !arrIds.isEmpty()) {
+                // 첫 번째 역 조합으로 열차 조회
+                transportOptions = korailUtil.fetchKorail(depIds.get(0), arrIds.get(0), date, timeRange);
+            }
+        } else if ("bus".equalsIgnoreCase(transportType)) {
+            depIds = busUtil.getTerminalIdsByCity(departureCity);
+            arrIds = busUtil.getTerminalIdsByCity(arrivalCity);
 
-		// 5. 일정 생성 로직 (단순 배치 예시)
-		// TODO: 장소 수, 체류 시간, 이동 시간 고려해서 일정짜기
+            if (!depIds.isEmpty() && !arrIds.isEmpty()) {
+                // 첫 번째 터미널 조합으로 버스 조회
+                transportOptions = busUtil.fetchBus(depIds.get(0), arrIds.get(0), date, timeRange);
+            }
+        }
 
-		// 6. ScheduleResponse 객체에 일정 데이터 채워서 반환
-		ScheduleResponse response = new ScheduleResponse();
-		response.setTitle(departure + "→" + arrival + " 여행 일정");
-		response.setDate(date);
-		response.setPlaces(places);
+        // 2. TODO: 조회된 교통편 정보 기반으로 실제 이동 시간 등 일정 생성 로직 추가
 
-		return response;
-	}
+        // 3. 도착지 주변 추천 장소 검색
+        List<PlaceDto> places = kakaoPlaceUtil.searchRecommendedPlaces(arrivalCity);
+
+        // 4. 카테고리 우선순위에 따른 정렬
+        Map<String, Integer> priorityMap = Map.of(
+                "AT4", 1,  // 관광지
+                "FD6", 2,  // 음식점
+                "CE7", 3   // 카페
+        );
+
+        places.sort(Comparator.comparingInt(p -> priorityMap.getOrDefault(p.getCategoryCode(), 99)));
+
+        // 5. 일정 생성 응답 세팅
+        ScheduleResponse response = new ScheduleResponse();
+        response.setTitle(departureCity + " → " + arrivalCity + " 여행 일정");
+        response.setDate(date);
+        response.setPlaces(places);
+
+        return response;
+    }
 }

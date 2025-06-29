@@ -1,103 +1,109 @@
 import React from "react";
 import styled from "styled-components";
 
-// 전체 폼 래퍼
-const FormWrapper = styled.div`
-  padding: 1rem;
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+const FormWrapper = styled.form`
   display: flex;
   flex-direction: column;
   gap: 1rem;
 `;
 
-// 입력 필드 컨테이너
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-// 레이블
 const Label = styled.label`
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-  color: #2d3748;
+  font-weight: 600;
 `;
 
-// 인풋
 const Input = styled.input`
   padding: 0.5rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 0.375rem;
-  font-size: 1rem;
-  width: 100%;
-  &:focus {
-    outline: none;
-    border-color: #3182ce;
-    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.3);
-  }
+  border: 1px solid #ddd;
+  border-radius: 4px;
 `;
 
-// 버튼
+const Select = styled.select`
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+`;
+
 const SubmitButton = styled.button`
-  background-color: #4299e1;
+  background-color: #48bb78;
   color: white;
   padding: 0.5rem 1rem;
-  font-weight: 600;
-  border: none;
   border-radius: 0.375rem;
+  border: none;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  font-weight: 600;
 
   &:hover {
-    background-color: #3182ce;
+    background-color: #38a169;
   }
 `;
 
 const TransportForm = ({ form, setForm, onSubmit }) => {
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
   return (
-    <FormWrapper>
-      <Field>
-        <Label>출발지</Label>
+    <FormWrapper
+      onSubmit={e => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div>
+        <Label htmlFor="departure">출발지</Label>
         <Input
           type="text"
+          id="departure"
           name="departure"
           value={form.departure}
           onChange={handleChange}
-          placeholder="서울"
+          placeholder="출발 도시 입력"
+          required
         />
-      </Field>
+      </div>
 
-      <Field>
-        <Label>도착지</Label>
+      <div>
+        <Label htmlFor="arrival">도착지</Label>
         <Input
           type="text"
+          id="arrival"
           name="arrival"
           value={form.arrival}
           onChange={handleChange}
-          placeholder="부산"
+          placeholder="도착 도시 입력"
+          required
         />
-      </Field>
+      </div>
 
-      <Field>
-        <Label>날짜</Label>
+      <div>
+        <Label htmlFor="date">날짜</Label>
         <Input
           type="date"
+          id="date"
           name="date"
           value={form.date}
           onChange={handleChange}
+          required
         />
-      </Field>
+      </div>
 
-      <SubmitButton onClick={onSubmit}>교통편 추천받기</SubmitButton>
+      <div>
+        <Label htmlFor="timeRange">시간대 선택 (선택사항)</Label>
+        <Select
+          id="timeRange"
+          name="timeRange"
+          value={form.timeRange || ""}
+          onChange={handleChange}
+        >
+          <option value="">전체 시간</option>
+          <option value="morning">오전 (05:00~11:59)</option>
+          <option value="afternoon">오후 (12:00~17:59)</option>
+          <option value="evening">저녁 (18:00~22:59)</option>
+        </Select>
+      </div>
+
+      <SubmitButton type="submit">교통편 검색</SubmitButton>
     </FormWrapper>
   );
 };

@@ -11,6 +11,7 @@ public class TransportRequest {
     private String departure;
     private String arrival;
     private String date;
+    private String timeRange;
     
     
 }

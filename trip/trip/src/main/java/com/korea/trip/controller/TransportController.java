@@ -27,11 +27,13 @@ public class TransportController {
 	public ResponseEntity<TransportResult> searchWithQuery(
 			@RequestParam("departure") String departure,
 			@RequestParam("arrival") String arrival,
-			@RequestParam("date") String date) {
+			@RequestParam("date") String date,
+			@RequestParam("timeRange") String timeRange) {
 		TransportRequest request = new TransportRequest();
 		request.setDeparture(departure);
 		request.setArrival(arrival);
 		request.setDate(date);
+		request.setTimeRange(timeRange);
 
 		return ResponseEntity.ok(transportService.recommendTransport(request));
 	}

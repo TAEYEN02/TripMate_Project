@@ -1,9 +1,11 @@
 package com.korea.trip.util;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -24,21 +26,10 @@ public class KorailUtil {
     private final ObjectMapper mapper = new ObjectMapper();
 
     private Map<String, List<StationInfo>> cityStationMap = new HashMap<>();
+
     public Map<String, List<StationInfo>> getCityStationMap() {
         return cityStationMap;
     }
-
-    private static final Set<String> KNOWN_CITIES = Set.of(
-        "서울", "부산", "대구", "인천", "광주", "대전", "울산",
-        "세종", "수원", "창원", "용인", "성남", "고양", "청주",
-        "전주", "천안", "안산", "포항", "김해", "진주", "제주"
-    );
-
-    // 역명 전체를 넣어야 정확히 필터링 됨 (부산역, 서울역 등)
-    private static final Set<String> MAJOR_KTX_STATIONS = Set.of(
-        "서울역", "부산역", "대전역", "동대구역", "광주송정역", "목포역", "순천역",
-        "익산역", "전주역", "천안아산역", "오송역", "신경주역", "울산역", "포항역", "광명역"
-    );
 
     @PostConstruct
     public void init() {
@@ -55,14 +46,6 @@ public class KorailUtil {
                            .replace("특별시", "")
                            .replace("도", "")
                            .trim();
-    }
-
-    private String extractCityFromStationName(String stationName) {
-        String clean = stationName.replaceAll("역|선", "").trim();
-        for (String city : KNOWN_CITIES) {
-            if (clean.contains(city)) return city;
-        }
-        return "기타";
     }
 
     public Map<String, List<StationInfo>> fetchCityStationMap() {
@@ -82,7 +65,7 @@ public class KorailUtil {
                     String simplifiedCity = simplifyCityName(rawCityName);
 
                     String stationUrl = "https://apis.data.go.kr/1613000/TrainInfoService/getCtyAcctoTrainSttnList"
-                            + "?serviceKey=" + serviceKey + "&_type=json&cityCode=" + cityCode;
+                            + "?serviceKey=" + serviceKey + "&_type=json&cityCode=" + cityCode + "&numOfRows=100";
 
                     try {
                         ResponseEntity<String> response = restTemplate.getForEntity(stationUrl, String.class);
@@ -94,14 +77,12 @@ public class KorailUtil {
                             for (JsonNode s : stations) {
                                 String stationName = s.path("nodename").asText();
                                 String stationCode = s.path("nodeid").asText();
-                                String city = extractCityFromStationName(stationName);
-                                list.add(new StationInfo(stationCode, stationName, city));
+                                list.add(new StationInfo(stationCode, stationName, "기타"));
                             }
                         } else if (stations.isObject()) {
                             String stationName = stations.path("nodename").asText();
                             String stationCode = stations.path("nodeid").asText();
-                            String city = extractCityFromStationName(stationName);
-                            list.add(new StationInfo(stationCode, stationName, city));
+                            list.add(new StationInfo(stationCode, stationName, "기타"));
                         }
                         map.put(simplifiedCity, list);
                     } catch (Exception e) {
@@ -122,24 +103,21 @@ public class KorailUtil {
         for (Map.Entry<String, List<StationInfo>> entry : cityStationMap.entrySet()) {
             if (entry.getKey().contains(simplified)) {
                 result.addAll(entry.getValue());
+            } else {
+                for (StationInfo s : entry.getValue()) {
+                    if (s.getStationName().contains(simplified)) {
+                        result.add(s);
+                    }
+                }
             }
         }
         return result;
     }
 
-    // 역명이 MAJOR_KTX_STATIONS 중 하나를 포함하는 역만 필터링 (contains 사용)
-    public List<StationInfo> getMajorStationsByCityKeyword(String cityKeyword) {
-        return getStationsByCityKeyword(cityKeyword).stream()
-                .filter(s -> {
-                    String name = s.getStationName().replace("역", "").trim();
-                    return MAJOR_KTX_STATIONS.stream()
-                            .anyMatch(major -> major.replace("역", "").equals(name));
-                })
-                .toList();
-    }
-    
-    public List<KorailInfo> fetchKorail(String depStationId, String arrStationId, String date) {
-        List<KorailInfo> results = new ArrayList<>();
+    public List<KorailInfo> fetchKorail(String depStationId, String arrStationId, String date, TimeRange timeRange) {
+        List<KorailInfo> allFetched = new ArrayList<>();
+        List<KorailInfo> results;
+
         String url = "https://apis.data.go.kr/1613000/TrainInfoService/getStrtpntAlocFndTrainInfo"
                 + "?serviceKey=" + serviceKey
                 + "&_type=json"
@@ -150,11 +128,11 @@ public class KorailUtil {
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             JsonNode items = mapper.readTree(response.getBody())
-                                   .path("response").path("body").path("items").path("item");
+                    .path("response").path("body").path("items").path("item");
 
             if (items.isArray()) {
                 for (JsonNode item : items) {
-                    results.add(new KorailInfo(
+                    KorailInfo korail = new KorailInfo(
                             item.path("traingradename").asText(),
                             item.path("trainno").asText(),
                             item.path("depplandtime").asText(),
@@ -162,11 +140,12 @@ public class KorailUtil {
                             item.path("depplacename").asText(),
                             item.path("arrplacename").asText(),
                             item.path("adultcharge").asInt()
-                    ));
+                    );
+                    allFetched.add(korail);
                 }
             } else if (items.isObject()) {
                 JsonNode item = items;
-                results.add(new KorailInfo(
+                KorailInfo korail = new KorailInfo(
                         item.path("traingradename").asText(),
                         item.path("trainno").asText(),
                         item.path("depplandtime").asText(),
@@ -174,64 +153,49 @@ public class KorailUtil {
                         item.path("depplacename").asText(),
                         item.path("arrplacename").asText(),
                         item.path("adultcharge").asInt()
-                ));
+                );
+                allFetched.add(korail);
             }
+
+            // 시간대 필터링
+            if (timeRange != null) {
+                results = allFetched.stream()
+                        .filter(train -> timeRange.isInRange(train.getDepPlandTime()))
+                        .toList();
+            } else {
+                results = allFetched;
+            }
+
         } catch (Exception e) {
             System.err.println("🛑 열차 조회 실패: " + e.getMessage());
+            return List.of(); // 실패 시 빈 리스트
         }
 
         return results;
     }
-
-    public List<KorailInfo> fetchKorailByCityKeyword(String depCityKeyword, String arrCityKeyword, String date) {
-        List<StationInfo> depStations = getStationsByCityKeyword(depCityKeyword);
-        List<StationInfo> arrStations = getStationsByCityKeyword(arrCityKeyword);
-
-        List<KorailInfo> allResults = new ArrayList<>();
-
-        for (StationInfo dep : depStations) {
-            for (StationInfo arr : arrStations) {
-                System.out.printf("🔍 기차 조회: %s(%s) → %s(%s) 날짜: %s\n",
-                        dep.getStationName(), dep.getStationCode(),
-                        arr.getStationName(), arr.getStationCode(), date);
-
-                List<KorailInfo> results = fetchKorail(dep.getStationCode(), arr.getStationCode(), date);
-                if (results != null && !results.isEmpty()) {
-                    allResults.addAll(results);
-                }
-            }
+    
+    public List<StationInfo> getMajorStationsByCityKeyword(String cityKeyword) {
+        if (cityKeyword == null || cityKeyword.isEmpty()) {
+            return List.of();
         }
 
-        if (allResults.isEmpty()) {
-            allResults.add(new KorailInfo("해당 날짜에 열차 정보가 없습니다.", "", "", "", "", "", 0));
+        String simplified = simplifyCityName(cityKeyword);
+        if (cityStationMap == null || cityStationMap.isEmpty()) {
+            return List.of();
         }
 
-        return allResults;
+        List<StationInfo> stations = cityStationMap.get(simplified);
+        if (stations == null) {
+            stations = List.of();
+        }
+
+        return stations;
     }
 
-    public List<KorailInfo> fetchKorailBetweenMajorStations(String depCityKeyword, String arrCityKeyword, String date) {
-        List<StationInfo> depStations = getMajorStationsByCityKeyword(depCityKeyword);
-        List<StationInfo> arrStations = getMajorStationsByCityKeyword(arrCityKeyword);
-
-        List<KorailInfo> allResults = new ArrayList<>();
-
-        for (StationInfo dep : depStations) {
-            for (StationInfo arr : arrStations) {
-                System.out.printf("🔍 [주요역] 기차 조회: %s(%s) → %s(%s) 날짜: %s\n",
-                        dep.getStationName(), dep.getStationCode(),
-                        arr.getStationName(), arr.getStationCode(), date);
-
-                List<KorailInfo> results = fetchKorail(dep.getStationCode(), arr.getStationCode(), date);
-                if (results != null && !results.isEmpty()) {
-                    allResults.addAll(results);
-                }
-            }
-        }
-
-        if (allResults.isEmpty()) {
-            allResults.add(new KorailInfo("[주요역] 해당 날짜에 열차 정보가 없습니다.", "", "", "", "", "", 0));
-        }
-
-        return allResults;
+    // 비동기 호출
+    @Async
+    public CompletableFuture<List<KorailInfo>> fetchKorailAsync(String depStationId, String arrStationId, String date, TimeRange timeRange) {
+        List<KorailInfo> result = fetchKorail(depStationId, arrStationId, date, timeRange);
+        return CompletableFuture.completedFuture(result);
     }
 }

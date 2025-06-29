@@ -22,10 +22,11 @@ public class PlaceController {
 
     @GetMapping("/search")
     public ResponseEntity<List<PlaceDto>> searchPlaces(
-            @RequestParam String keyword,
-            @RequestParam(required = false) String category
+            @RequestParam(name = "keyword") String keyword,
+            @RequestParam(name = "category", required = false) String category
     ) {
         List<PlaceDto> results = placeService.searchPlaces(keyword, category);
         return ResponseEntity.ok(results);
     }
+
 }
