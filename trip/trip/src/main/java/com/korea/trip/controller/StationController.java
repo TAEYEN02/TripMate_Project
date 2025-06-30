@@ -43,6 +43,6 @@ public class StationController {
     // 🚌 버스 터미널 도시별
     @GetMapping("/terminals/city")
     public ResponseEntity<List<TerminalInfo>> getBusTerminalsByCity(@RequestParam String city) {
-        return ResponseEntity.ok(busUtil.getTerminalsByCity(city));
+        return ResponseEntity.ok(busUtil.getTerminalsByCityKeyword(city));
     }
 }

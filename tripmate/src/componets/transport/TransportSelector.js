@@ -3,7 +3,7 @@ import styled from "styled-components";
 import {
   fetchCityStationMap, // 기차
   fetchBusTerminalMap, // 버스
-} from "../../api/stationApi";
+} from "../../api/station";
 
 const timeRanges = [
   { value: "", label: "전체" },

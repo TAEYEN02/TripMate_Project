@@ -47,6 +47,7 @@ public class KorailUtil {
                            .replace("도", "")
                            .trim();
     }
+   
 
     public Map<String, List<StationInfo>> fetchCityStationMap() {
         Map<String, List<StationInfo>> map = new HashMap<>();

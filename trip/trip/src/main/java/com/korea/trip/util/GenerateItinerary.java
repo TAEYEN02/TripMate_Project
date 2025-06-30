@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.korea.trip.dto.PlaceDto;
 import com.korea.trip.dto.ScheduleResponse;
+import com.korea.trip.dto.TerminalInfo;
 
 @Component
 public class GenerateItinerary {
@@ -44,13 +45,16 @@ public class GenerateItinerary {
                 // 첫 번째 역 조합으로 열차 조회
                 transportOptions = korailUtil.fetchKorail(depIds.get(0), arrIds.get(0), date, timeRange);
             }
-        } else if ("bus".equalsIgnoreCase(transportType)) {
-            depIds = busUtil.getTerminalIdsByCity(departureCity);
-            arrIds = busUtil.getTerminalIdsByCity(arrivalCity);
+        }  else if ("bus".equalsIgnoreCase(transportType)) {
+            List<TerminalInfo> depTerminals = busUtil.getTerminalsByCityKeyword(departureCity);
+            List<TerminalInfo> arrTerminals = busUtil.getTerminalsByCityKeyword(arrivalCity);
 
-            if (!depIds.isEmpty() && !arrIds.isEmpty()) {
-                // 첫 번째 터미널 조합으로 버스 조회
-                transportOptions = busUtil.fetchBus(depIds.get(0), arrIds.get(0), date, timeRange);
+            if (!depTerminals.isEmpty() && !arrTerminals.isEmpty()) {
+                transportOptions = busUtil.fetchBus(
+                    depTerminals.get(0).getTerminalId(),
+                    arrTerminals.get(0).getTerminalId(),
+                    date
+                );
             }
         }
 

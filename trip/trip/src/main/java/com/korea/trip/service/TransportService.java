@@ -1,8 +1,6 @@
 package com.korea.trip.service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
@@ -10,16 +8,8 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Service;
 
-import com.korea.trip.dto.BusInfo;
-import com.korea.trip.dto.KorailInfo;
-import com.korea.trip.dto.TransportRequest;
-import com.korea.trip.dto.TransportResult;
-import com.korea.trip.dto.TerminalInfo;
-import com.korea.trip.util.BusUtil;
-import com.korea.trip.util.KorailUtil;
-import com.korea.trip.util.TimeRange;
-import com.korea.trip.dto.StationInfo;
-
+import com.korea.trip.dto.*;
+import com.korea.trip.util.*;
 import jakarta.annotation.PostConstruct;
 
 @Service
@@ -28,9 +18,8 @@ public class TransportService {
     private final KorailUtil korailUtil;
     private final BusUtil busUtil;
 
-    private Map<String, List<TerminalInfo>> busTerminalMap;
-    private Map<String, List<StationInfo>> korailStationMap;
 
+    // Map 필드 제거 (초기화 시점 문제 해결)
     public TransportService(KorailUtil korailUtil, BusUtil busUtil) {
         this.korailUtil = korailUtil;
         this.busUtil = busUtil;
@@ -38,11 +27,9 @@ public class TransportService {
 
     @PostConstruct
     public void init() {
-        this.busTerminalMap = busUtil.fetchCityTerminalMap();
-        System.out.println("버스터미널 목록: " + busTerminalMap.keySet());
-
-        this.korailStationMap = korailUtil.getCityStationMap();
-        System.out.println("코레일 역 목록: " + korailStationMap.keySet());
+        // 초기화 시점 조정
+        System.out.println("버스터미널 목록: " + busUtil.getCityTerminalMap().keySet());
+        System.out.println("코레일 역 목록: " + korailUtil.getCityStationMap().keySet());
     }
 
     public TransportResult recommendTransport(TransportRequest request) {
@@ -51,40 +38,49 @@ public class TransportService {
         String date = formatDate(request.getDate());
         String timeRangeStr = request.getTimeRange();
 
-        final TimeRange timeRange = TimeRange.fromString(timeRangeStr); // enum 변환 메서드 사용
+        final TimeRange timeRange = TimeRange.fromString(timeRangeStr);
 
         System.out.println("요청 출발 도시 (정규화): " + depCity);
         System.out.println("요청 도착 도시 (정규화): " + arrCity);
         System.out.println("요청 날짜: " + date);
         System.out.println("요청 시간대: " + timeRange);
 
-        List<String> busDepIds = busUtil.getTerminalIdsByCity(depCity);
-        List<String> busArrIds = busUtil.getTerminalIdsByCity(arrCity);
+        // 버스 터미널 ID 조회
+        List<TerminalInfo> depTerminals = busUtil.getTerminalsByCityKeyword(depCity);
+        List<TerminalInfo> arrTerminals = busUtil.getTerminalsByCityKeyword(arrCity);
+        
+        List<String> busDepIds = depTerminals.stream()
+            .map(TerminalInfo::getTerminalId)
+            .toList();
+            
+        List<String> busArrIds = arrTerminals.stream()
+            .map(TerminalInfo::getTerminalId)
+            .toList();
 
         List<BusInfo> busResults = new ArrayList<>();
         for (String depId : busDepIds) {
             for (String arrId : busArrIds) {
-                busResults.addAll(busUtil.fetchBus(depId, arrId, date, timeRange));
+                busResults.addAll(busUtil.fetchBus(depId, arrId, date));
             }
         }
 
         List<String> busList = busResults.stream()
-            .filter(bus -> bus.getDepPlandTime().length() >= 12 && bus.getArrPlandTime().length() >= 12)
+            .filter(bus -> bus.getDepPlandTime() != null && bus.getDepPlandTime().length() >= 12)
             .filter(bus -> isInTimeRange(bus.getDepPlandTime(), timeRange))
             .map(bus -> String.format("%s | %s → %s | %d원 | %s → %s",
                 bus.getGradeNm(),
                 bus.getDepPlaceNm(),
                 bus.getArrPlaceNm(),
                 bus.getCharge(),
-                bus.getDepPlandTime().substring(8, 12),
-                bus.getArrPlandTime().substring(8, 12)))
+                formatTime(bus.getDepPlandTime()),
+                formatTime(bus.getArrPlandTime())))
             .toList();
 
+        // 기차 처리 로직 (변경 없음)
         List<StationInfo> depStations = korailUtil.getMajorStationsByCityKeyword(depCity);
         List<StationInfo> arrStations = korailUtil.getMajorStationsByCityKeyword(arrCity);
 
         List<CompletableFuture<List<KorailInfo>>> futureList = new ArrayList<>();
-
         for (StationInfo dep : depStations) {
             for (StationInfo arr : arrStations) {
                 CompletableFuture<List<KorailInfo>> future =
@@ -101,19 +97,15 @@ public class TransportService {
             .flatMap(List::stream)
             .collect(Collectors.toList());
 
-        if (korailResults.isEmpty()) {
-            korailResults.add(new KorailInfo("해당 날짜에 열차 정보가 없습니다.", "", "", "", "", "", 0));
-        }
-
         List<String> korailList = korailResults.stream()
-            .filter(train -> train.getDepPlandTime().length() >= 12 && train.getArrPlandTime().length() >= 12)
+            .filter(train -> train.getDepPlandTime() != null && train.getDepPlandTime().length() >= 12)
             .filter(train -> isInTimeRange(train.getDepPlandTime(), timeRange))
             .map(train -> String.format("%s | %s역 → %s역 | %s → %s | %d원",
                 train.getTrainGrade(),
                 train.getDepStationName(),
                 train.getArrStationName(),
-                train.getDepPlandTime().substring(8, 12),
-                train.getArrPlandTime().substring(8, 12),
+                formatTime(train.getDepPlandTime()),
+                formatTime(train.getArrPlandTime()),
                 train.getAdultcharge()))
             .toList();
 
@@ -129,8 +121,17 @@ public class TransportService {
         return date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     }
 
+    // 시간 문자열에서 HHmm 추출 (예: "202406301200" -> "1200")
+    private String formatTime(String fullTime) {
+        return (fullTime != null && fullTime.length() >= 12) 
+            ? fullTime.substring(8, 12) 
+            : "0000";
+    }
+
+    // 시간대 필터링 (HHmm 형식 사용)
     private boolean isInTimeRange(String timeStr, TimeRange timeRange) {
         if (timeRange == null) return true;
-        return timeRange.isInRange(timeStr);
+        String timePart = formatTime(timeStr);
+        return timeRange.isInRange(timePart);
     }
 }
