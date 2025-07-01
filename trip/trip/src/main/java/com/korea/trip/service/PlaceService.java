@@ -1,6 +1,7 @@
 package com.korea.trip.service;
 
 import java.util.List;
+<<<<<<< HEAD
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -9,12 +10,20 @@ import com.korea.trip.dto.place.place.PlaceResponse;
 import com.korea.trip.dto.place.place.PlaceSearchRequest;
 import com.korea.trip.models.Place;
 import com.korea.trip.repositories.PlaceRepository;
+=======
+
+import org.springframework.stereotype.Service;
+
+import com.korea.trip.dto.PlaceDto;
+import com.korea.trip.util.KakaoPlaceUtil;
+>>>>>>> 8d1750e2444098264ee6d204cd7b7aa2785a441a
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class PlaceService {
+<<<<<<< HEAD
 	
     private final PlaceRepository placeRepository;
     
@@ -55,3 +64,12 @@ public class PlaceService {
                 .build();
     }
 }
+=======
+
+    private final KakaoPlaceUtil kakaoPlaceUtil;
+
+    public List<PlaceDto> searchPlaces(String keyword, String categoryFilter) {
+        return kakaoPlaceUtil.searchPlaces(keyword, categoryFilter);
+    }
+}
+>>>>>>> 8d1750e2444098264ee6d204cd7b7aa2785a441a
