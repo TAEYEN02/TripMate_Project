@@ -1,68 +1,129 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+// PlannerPage.jsx (일부 수정)
+
+import React, { useState } from "react";
 import styled from "styled-components";
+import ScheduleForm from "../componets/planner/PlaceRecomendForm";
+import ScheduleResult from "../componets/planner/ScheduleResult";
 import { generateSchedule } from "../api/scheduleApi";
-import ScheduleTimeline from "../componets/planner/ScheduleTimeline";
+import MapComponent from "../componets/map/MapComponent";
 
-// 페이지 전체 래퍼
-const PageWrapper = styled.div`
-  padding: 1.5rem; /* p-6 */
+const Container = styled.div`
+  height: 850px;
+  width: 100%;
+  margin: 3px auto;
+  padding: 1px 2rem;
+  background: #f9faff;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  gap: 2rem; 
 `;
 
-// 제목
-const Title = styled.h2`
-  font-size: 1.5rem; /* text-2xl */
+const TitleRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const Title = styled.h1`
+  color: #222;
+`;
+
+const AddScheduleButton = styled.button`
+  background-color: #4caf50;
+  border: none;
+  color: white;
   font-weight: 700;
-  margin-bottom: 1rem; /* mb-4 */
-  color: #2d3748;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #3a9a38;
+  }
 `;
 
-// 상태 메시지 (로딩, 에러)
-const StatusMessage = styled.p`
-  padding: 1rem; /* p-4 */
-  color: ${(props) => (props.error ? "#e53e3e" : "#4a5568")}; /* text-red-500 or 기본 */
+const Message = styled.p`
+  text-align: center;
+  margin-top: 1rem;
+  color: ${(props) => (props.error ? "red" : "#555")};
+  font-weight: ${(props) => (props.error ? "700" : "400")};
+`;
+
+const LeftPane = styled.div`
+  flex: 1;
+  overflow-y: auto;
+`;
+
+const RightPane = styled.div`
+  flex: 1;
+  height: 100%;
 `;
 
 const PlannerPage = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const { departure, arrival, date, transport } = location.state || {};
-
   const [schedule, setSchedule] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null); // 선택된 장소 ID 상태
 
-  useEffect(() => {
-    if (!departure || !arrival || !date) {
-      setError("필수 정보가 누락되었습니다. 다시 시도해주세요.");
-      navigate("/planner");
-      return;
+  // 일정 추가하기 버튼 클릭 시, 일정 생성 폼으로 포커스 이동 등 원하는 동작 추가 가능
+  const handleAddScheduleClick = () => {
+    alert("일정 추가하기 버튼 클릭! 일정 생성 폼에서 새로운 여행지를 입력하세요.");
+  };
+
+  const handleGenerate = async (formData) => {
+    setLoading(true);
+    setError("");
+    setSchedule(null);
+    setSelectedPlaceId(null);
+
+    try {
+      const res = await generateSchedule(formData);
+      setSchedule(res.data);
+    } catch (err) {
+      setError("일정 생성 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
     }
-
-    const fetchSchedule = async () => {
-      try {
-        const res = await generateSchedule({ departure, arrival, date });
-        setSchedule(res);
-      } catch (err) {
-        console.error("일정 생성 실패:", err);
-        setError("일정 생성 중 오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSchedule();
-  }, [departure, arrival, date, navigate]);
-
-  if (loading) return <StatusMessage>⏳ 일정을 생성 중입니다...</StatusMessage>;
-  if (error) return <StatusMessage error>{error}</StatusMessage>;
+  };
+  // ScheduleResult에서 장소 클릭 시 호출
+  const handlePlaceClick = (placeId) => {
+    setSelectedPlaceId(placeId);
+  };
 
   return (
-    <PageWrapper>
-      <Title>📍 자동 생성된 일정</Title>
-      <ScheduleTimeline schedule={schedule} />
-    </PageWrapper>
+    <Container>
+      <LeftPane>
+        <TitleRow>
+          <Title>🌏 여행 일정지 추천</Title>
+          <AddScheduleButton onClick={handleAddScheduleClick}>
+            일정 추가하기
+          </AddScheduleButton>
+        </TitleRow>
+
+        <ScheduleForm onSubmit={handleGenerate} />
+
+        {loading && <Message>⏳ 일정을 생성 중입니다...</Message>}
+        {error && <Message error>{error}</Message>}
+
+          {schedule && (
+          <ScheduleResult
+            schedule={schedule}
+            onPlaceClick={handlePlaceClick}  // 클릭 이벤트 핸들러 전달
+            selectedPlaceId={selectedPlaceId}
+          />
+        )}
+      </LeftPane>
+      <RightPane>
+         <MapComponent
+          places={schedule?.places || []}
+          selectedPlaceId={selectedPlaceId}  // 선택된 장소 ID 전달
+        />
+      </RightPane>
+    </Container>
   );
 };
 

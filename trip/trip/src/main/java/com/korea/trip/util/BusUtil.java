@@ -22,176 +22,149 @@ public class BusUtil {
     private String serviceKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper mapper = new ObjectMapper();
-
-    // 16개 대단위 행정구역명
-    private static final List<String> REGION_LIST = List.of(
-        "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
-        "경기", "강원", "충청북", "충청남", "전라북", "전라남", "경상북", "경상남"
-    );
-
-    // 터미널ID 2자리 → 지역명 매핑 (누락된 지역 추가)
-    private static final Map<String, String> TERMINAL_ID_REGION_MAP = Map.ofEntries(
-        Map.entry("01", "서울"), Map.entry("02", "서울"), Map.entry("03", "서울"), Map.entry("04", "서울"),
-        Map.entry("10", "인천"),
-        Map.entry("11", "경기"), Map.entry("12", "경기"), Map.entry("13", "경기"), Map.entry("14", "경기"),
-        Map.entry("15", "경기"), Map.entry("16", "경기"), Map.entry("17", "경기"), Map.entry("18", "경기"),
-        Map.entry("19", "경기"),
-        Map.entry("20", "강원"), Map.entry("21", "강원"), Map.entry("22", "강원"), Map.entry("23", "강원"),
-        Map.entry("24", "강원"), Map.entry("25", "강원"),
-        Map.entry("30", "대전"),
-        Map.entry("40", "충청북"), Map.entry("41", "충청북"), Map.entry("42", "충청북"), Map.entry("43", "충청북"),
-        Map.entry("44", "충청북"), Map.entry("45", "충청북"), Map.entry("46", "충청북"), Map.entry("47", "충청북"),
-        Map.entry("50", "광주"),
-        Map.entry("60", "전라북"), Map.entry("61", "전라북"), Map.entry("62", "전라북"), Map.entry("63", "전라북"),
-        Map.entry("64", "전라북"), Map.entry("65", "전라북"), Map.entry("66", "전라북"), Map.entry("67", "전라북"),
-        Map.entry("68", "전라북"), Map.entry("69", "전라북"),
-        Map.entry("70", "부산"),
-        Map.entry("80", "대구"), Map.entry("81", "경상북"), Map.entry("82", "경상북"), Map.entry("83", "경상북"),
-        Map.entry("84", "경상북"), Map.entry("85", "경상북"), Map.entry("86", "경상북"), Map.entry("87", "경상북"),
-        Map.entry("88", "경상북"), Map.entry("89", "경상북"),
-        // 누락된 지역 추가
-//        Map.entry("71", "울산"),
-        Map.entry("35", "세종"),
-        Map.entry("31", "충청남"),
-        Map.entry("51", "전라남"),
-        Map.entry("71", "경상남")
-    );
-
-    private Map<String, List<TerminalInfo>> regionTerminalMap = new LinkedHashMap<>();
+    private Map<String, List<TerminalInfo>> cityTerminalMap = new HashMap<>();
 
     @PostConstruct
     public void init() {
-        regionTerminalMap = fetchRegionTerminalMap();
-        System.out.println("✅ 행정구역별 버스 터미널 목록 로딩 완료: " + regionTerminalMap.size() + "개 지역");
-        regionTerminalMap.forEach((region, terminals) -> {
-            String names = terminals.stream()
-                .map(TerminalInfo::getTerminalName)
-                .collect(Collectors.joining(", ", "[", "]"));
-            System.out.printf("[%s] 터미널 수: %d, 터미널명들: %s%n", region, terminals.size(), names);
+        cityTerminalMap = fetchTerminalMap();
+        System.out.println("✅ 버스터미널 목록 로딩 완료: " + cityTerminalMap.size() + "개 도시");
+        cityTerminalMap.forEach((city, list) -> {
+            System.out.println(city + " → 터미널 수: " + list.size() + ", 터미널들: " + 
+                list.stream().map(t -> t.getTerminalName()).collect(Collectors.toList()));
         });
     }
 
-    public Map<String, List<TerminalInfo>> getCityTerminalMap() {
-        return regionTerminalMap;
-    }
+    public Map<String, List<TerminalInfo>> fetchTerminalMap() {
+        Map<String, List<TerminalInfo>> map = new HashMap<>();
 
-    // 터미널ID 기반 지역 분류 (중복 제거 추가)
-    private Map<String, List<TerminalInfo>> fetchRegionTerminalMap() {
-        Map<String, List<TerminalInfo>> map = new LinkedHashMap<>();
-        Map<String, Set<String>> regionTerminalNames = new HashMap<>(); // 중복 제거용
-
-        REGION_LIST.forEach(region -> {
-            map.put(region, new ArrayList<>());
-            regionTerminalNames.put(region, new HashSet<>());
-        });
-
-        String terminalUrl = "https://apis.data.go.kr/1613000/ExpBusInfoService/getExpBusTrminlList"
-                           + "?serviceKey=" + serviceKey
-                           + "&_type=json"
-                           + "&numOfRows=1000";
-
-        try {
-            ResponseEntity<String> response = restTemplate.getForEntity(terminalUrl, String.class);
-            JsonNode root = mapper.readTree(response.getBody());
-            JsonNode items = root.path("response").path("body").path("items").path("item");
-
-            List<TerminalInfo> allTerminals = new ArrayList<>();
-            if (items.isArray()) {
-                for (JsonNode item : items) {
-                    allTerminals.add(new TerminalInfo(
-                        item.path("terminalId").asText(),
-                        item.path("terminalNm").asText(),
-                        null
-                    ));
-                }
-            } else if (items.isObject()) {
-                allTerminals.add(new TerminalInfo(
-                    items.path("terminalId").asText(),
-                    items.path("terminalNm").asText(),
-                    null
-                ));
-            }
-
-            // 터미널ID 기반 분류 + 이름 중복 제거
-            for (TerminalInfo terminal : allTerminals) {
-                String terminalId = terminal.getTerminalId();
-                if (terminalId == null || terminalId.length() < 6) continue;
-                
-                String code = terminalId.substring(4, 6);
-                String region = TERMINAL_ID_REGION_MAP.get(code);
-                
-                if (region != null) {
-                    String terminalName = terminal.getTerminalName();
-                    Set<String> nameSet = regionTerminalNames.get(region);
-                    
-                    // 이름 중복 체크
-                    if (!nameSet.contains(terminalName)) {
-                        map.get(region).add(terminal);
-                        nameSet.add(terminalName);
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("🛑 터미널 전체 조회 실패: " + e.getMessage());
-        }
-        return map;
-    }
-
-    // 도시명(도/광역시)으로 터미널 목록 조회
-    public List<TerminalInfo> getTerminalsByCityKeyword(String keyword) {
-        String simplifiedKeyword = simplifyCityName(keyword);
-        return regionTerminalMap.getOrDefault(simplifiedKeyword, Collections.emptyList());
-    }
-
-    // 버스 일정 조회
-    public List<BusInfo> fetchBus(String depTerminalId, String arrTerminalId, String date) {
-        List<BusInfo> buses = new ArrayList<>();
-        String url = "https://apis.data.go.kr/1613000/ExpBusInfoService/getStrtpntAlocFndExpbusInfo"
-                   + "?serviceKey=" + serviceKey
-                   + "&_type=json"
-                   + "&depPlaceId=" + depTerminalId
-                   + "&arrPlaceId=" + arrTerminalId
-                   + "&depPlandTime=" + date;
+        String url = "https://apis.data.go.kr/1613000/ExpBusInfoService/getExpBusTrminlList"
+                + "?serviceKey=" + serviceKey + "&_type=json" + "&numOfRows=300&pageNo=1";
 
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-            JsonNode root = mapper.readTree(response.getBody());
-            JsonNode items = root.path("response").path("body").path("items").path("item");
-            
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode items = mapper.readTree(response.getBody()).path("response").path("body").path("items").path("item");
+
             if (items.isArray()) {
                 for (JsonNode item : items) {
-                    buses.add(parseBusItem(item));
+                    String terminalId = item.path("terminalId").asText();
+                    String terminalNm = item.path("terminalNm").asText();
+
+                    String city = extractCityFromTerminalName(terminalNm);
+                    TerminalInfo terminalInfo = new TerminalInfo(terminalId, terminalNm, city);
+
+                    map.computeIfAbsent(city, k -> new ArrayList<>()).add(terminalInfo);
                 }
             } else if (items.isObject()) {
-                buses.add(parseBusItem(items));
+                String terminalId = items.path("terminalId").asText();
+                String terminalNm = items.path("terminalNm").asText();
+
+                String city = extractCityFromTerminalName(terminalNm);
+                TerminalInfo terminalInfo = new TerminalInfo(terminalId, terminalNm, city);
+
+                map.computeIfAbsent(city, k -> new ArrayList<>()).add(terminalInfo);
             }
-            return buses;
         } catch (Exception e) {
-            System.err.println("🛑 버스 조회 실패: " + e.getMessage());
-            return Collections.emptyList();
+            System.err.println("🛑 버스터미널 목록 로딩 실패: " + e.getMessage());
         }
+
+        return map;
     }
 
-    // JSON → BusInfo DTO 변환
-    private BusInfo parseBusItem(JsonNode item) {
-        return new BusInfo(
-            item.path("gradeNm").asText(),
-            item.path("routeId").asText(),
-            item.path("depPlandTime").asText(),
-            item.path("arrPlandTime").asText(),
-            item.path("depPlaceNm").asText(),
-            item.path("arrPlaceNm").asText(),
-            item.path("charge").asInt()
-        );
+    private String extractCityFromTerminalName(String terminalNm) {
+        // 더 이상 KNOWN_CITIES를 사용하지 않고, 항상 '기타' 반환
+        return "기타";
     }
 
-    // 도시명 정규화
-    private String simplifyCityName(String fullName) {
-        return fullName.replace("특별시", "")
-                       .replace("광역시", "")
-                       .replace("도", "")
-                       .trim();
+    // 도시명 기준으로 터미널 ID 리스트 가져오기
+    public List<String> getTerminalIdsByCity(String cityName) {
+        List<String> ids = new ArrayList<>();
+        // key로 먼저 찾기
+        if (cityTerminalMap.containsKey(cityName)) {
+            for (TerminalInfo t : cityTerminalMap.get(cityName)) {
+                ids.add(t.getTerminalId());
+            }
+        }
+        // value(터미널명)에서도 찾기
+        for (List<TerminalInfo> list : cityTerminalMap.values()) {
+            for (TerminalInfo t : list) {
+                if (t.getTerminalName().contains(cityName) && !ids.contains(t.getTerminalId())) {
+                    ids.add(t.getTerminalId());
+                }
+            }
+        }
+        return ids;
+    }
+
+    // 단일 터미널 ID 기준 버스 정보 조회
+    public List<BusInfo> fetchBus(String depTerminalId, String arrTerminalId, String date) {
+        List<BusInfo> results = new ArrayList<>();
+
+        String url = "https://apis.data.go.kr/1613000/ExpBusInfoService/getStrtpntAlocFndExpbusInfo"
+                + "?serviceKey=" + serviceKey
+                + "&numOfRows=100&pageNo=1&_type=json"
+                + "&depTerminalId=" + depTerminalId
+                + "&arrTerminalId=" + arrTerminalId
+                + "&depPlandTime=" + date;
+
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode items = mapper.readTree(response.getBody())
+                    .path("response").path("body").path("items").path("item");
+
+            if (items.isArray()) {
+                for (JsonNode item : items) {
+                    BusInfo busInfo = new BusInfo(
+                            item.path("gradeNm").asText(),
+                            item.path("routeId").asText(),
+                            item.path("depPlandTime").asText(),
+                            item.path("arrPlandTime").asText(),
+                            item.path("depPlaceNm").asText(),
+                            item.path("arrPlaceNm").asText(),
+                            item.path("charge").asInt()
+                    );
+                    results.add(busInfo);
+                }
+            } else if (items.isObject()) {
+                BusInfo busInfo = new BusInfo(
+                        items.path("gradeNm").asText(),
+                        items.path("routeId").asText(),
+                        items.path("depPlandTime").asText(),
+                        items.path("arrPlandTime").asText(),
+                        items.path("depPlaceNm").asText(),
+                        items.path("arrPlaceNm").asText(),
+                        items.path("charge").asInt()
+                );
+                results.add(busInfo);
+            }
+        } catch (Exception e) {
+            System.err.println("🛑 버스 정보 조회 실패: " + e.getMessage());
+        }
+
+        return results;
+    }
+
+    // 도시명 기준으로 모든 조합 버스 조회 및 문자열 리스트 반환
+    public List<String> fetchBusByCityName(String depCity, String arrCity, String date) {
+        List<String> depIds = getTerminalIdsByCity(depCity);
+        List<String> arrIds = getTerminalIdsByCity(arrCity);
+
+        List<BusInfo> allBuses = new ArrayList<>();
+        for (String depId : depIds) {
+            for (String arrId : arrIds) {
+                allBuses.addAll(fetchBus(depId, arrId, date));
+            }
+        }
+
+        return allBuses.stream()
+                .map(bus -> String.format("%s | %s → %s | %d원 | %s → %s",
+                        bus.getGradeNm(),
+                        bus.getDepPlaceNm(),
+                        bus.getArrPlaceNm(),
+                        bus.getCharge(),
+                        bus.getDepPlandTime().substring(8, 12),
+                        bus.getArrPlandTime().substring(8, 12)))
+                .collect(Collectors.toList());
     }
 }

@@ -22,7 +22,9 @@ const Navbar = () => {
   return (
     <Nav>
       <StyledLink to="/">일정 만들기</StyledLink>
-      <StyledLink to="/planner">자동 일정 결과</StyledLink>
+      <StyledLink to="/planner">여행지 추천</StyledLink>
+      <StyledLink to="/schedule">스케줄 추천</StyledLink>
+      <StyledLink to="/my-schedule">🙍‍♀️</StyledLink>
     </Nav>
   );
 };

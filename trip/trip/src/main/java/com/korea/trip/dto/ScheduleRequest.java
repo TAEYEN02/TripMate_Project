@@ -5,12 +5,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class TransportRequest {
-	private String transportType;
-    private String departure;
+@NoArgsConstructor
+public class ScheduleRequest {
+	private String departure;
     private String arrival;
-    private String date;
-    private String timeRange; 
+    private String date; // yyyy-MM-dd
+    private int days; // 여행 기간 (ex 3)
 }
