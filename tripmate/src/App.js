@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
-import Navbar from './componets/common/Navbar';
+import Navbar from './components/common/Navbar';
 import StartPlannerPage from './pages/StartPlannerPage';
 import PlannerPage from './pages/PlannerPage';
 import SchedulePage from './pages/SchedulePage';

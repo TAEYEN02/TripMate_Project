@@ -63,11 +63,11 @@ const ScheduleResult = ({ schedule, onPlaceClick, selectedPlaceId }) => {
         <CategorySection key={category}>
           <CategoryTitle>{category}</CategoryTitle>
           <PlaceList>
-            {places.map((p) => (
+            {places.map((p,idx) => (
               <PlaceItem
-                key={p.id} // 반드시 고유 id 있어야 함
-                onClick={() => onPlaceClick(p.id)}
-                selected={selectedPlaceId === p.id}
+                key={idx} 
+                onClick={() => onPlaceClick(idx)}
+                selected={selectedPlaceId === idx}
                 title={`${p.name}\n${p.address}`}
               >
                 <div>

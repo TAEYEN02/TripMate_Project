@@ -26,10 +26,10 @@ const PlaceImage = styled.img`
   margin-bottom: 6px;
 `;
 
-const MapComponent = ({ places, selectedPlaceId }) => {
+const MapComponent = ({ places, selectedPlaceId, setSelectedPlaceId }) => {
   // 기본 중심 좌표: 첫 장소 or 서울 중심
   const center = places.length
-    ? { lat: places[0].latitude, lng: places[0].longitude }
+    ? { lat: places[0].lat, lng: places[0].lng }
     : { lat: 37.5665, lng: 126.9780 };
 
   const [infoPosition, setInfoPosition] = useState(null);
@@ -47,7 +47,9 @@ const MapComponent = ({ places, selectedPlaceId }) => {
       setInfoPosition({ lat: place.latitude, lng: place.longitude });
       setInfoData(place);
     }
+    console.log(places);
   }, [selectedPlaceId, places]);
+  console.log("MapComponent 렌더링!", places);
 
   return (
     <MapWrapper>
@@ -56,21 +58,13 @@ const MapComponent = ({ places, selectedPlaceId }) => {
         style={{ width: "100%", height: "100%" }}
         level={5}
       >
-        {places.map((place) => (
+        {places.map((place, idx) => (
           <MapMarker
-            key={place.id}
-            position={{ lat: place.latitude, lng: place.longitude }}
-            image={{
-              src: selectedPlaceId === place.id
-                ? "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png"
-                : "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_blue.png",
-              size: { width: 24, height: 35 },
-              options: { offset: { x: 12, y: 35 } },
-            }}
+            key={idx}
+            position={{ lat: place.lat, lng: place.lng }}
             clickable={true}
             onClick={() => {
-              // 마커 클릭시 선택된 장소 변경 (필요시)
-              // 여기에 setSelectedPlaceId가 필요하면 상위 컴포넌트 콜백을 전달해야 함
+              if (setSelectedPlaceId) setSelectedPlaceId(idx);
             }}
           />
         ))}
@@ -79,13 +73,16 @@ const MapComponent = ({ places, selectedPlaceId }) => {
         {infoPosition && infoData && (
           <CustomOverlayMap position={infoPosition}>
             <InfoWindowContent>
-              <PlaceImage
-                src={infoData.photoUrl || "https://via.placeholder.com/200x100?text=No+Image"}
-                alt={infoData.name}
-              />
               <strong>{infoData.name}</strong>
               <br />
               <small>{infoData.address}</small>
+              {infoData.place_url && (
+                <div style={{ marginTop: '8px' }}>
+                  <a href={infoData.place_url} target="_blank" rel="noopener noreferrer" style={{ color: '#3182f6', textDecoration: 'underline', fontSize: '0.95em' }}>
+                    카카오맵 상세보기
+                  </a>
+                </div>
+              )}
             </InfoWindowContent>
           </CustomOverlayMap>
         )}

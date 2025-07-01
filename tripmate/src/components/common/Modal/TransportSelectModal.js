@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { generateDummyTransports } from "../../../utils/transportDummy";
-import TransportForm from "../../transport/TransportForm";
+import TransportForm from "../../transport/TransportForm.js";
 
 // 날짜 포맷 함수
 const formatDate = (date) => {

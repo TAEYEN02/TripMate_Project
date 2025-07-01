@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import styled from "styled-components";
-import ScheduleForm from "../componets/planner/PlaceRecomendForm";
-import ScheduleResult from "../componets/planner/ScheduleResult";
+import ScheduleForm from "../components/planner/PlaceRecomendForm";
+import ScheduleResult from "../components/planner/ScheduleResult";
 import { generateSchedule } from "../api/scheduleApi";
-import MapComponent from "../componets/map/MapComponent";
+import MapComponent from "../components/map/MapComponent";
 
 const Container = styled.div`
   height: 850px;
@@ -112,7 +112,7 @@ const PlannerPage = () => {
           {schedule && (
           <ScheduleResult
             schedule={schedule}
-            onPlaceClick={handlePlaceClick}  // 클릭 이벤트 핸들러 전달
+            onPlaceClick={setSelectedPlaceId}  
             selectedPlaceId={selectedPlaceId}
           />
         )}
@@ -120,7 +120,8 @@ const PlannerPage = () => {
       <RightPane>
          <MapComponent
           places={schedule?.places || []}
-          selectedPlaceId={selectedPlaceId}  // 선택된 장소 ID 전달
+          selectedPlaceId={selectedPlaceId}  
+          setSelectedPlaceId={setSelectedPlaceId}
         />
       </RightPane>
     </Container>

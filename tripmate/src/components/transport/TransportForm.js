@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 // 교통편 리스트 + 탭 + 페이지네이션 컴포넌트
 const TransportForm = ({ list, selected, onSelect }) => {

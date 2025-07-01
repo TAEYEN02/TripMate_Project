@@ -1,8 +1,8 @@
 // MySchedulePage.jsx
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import MapComponent from "../componets/map/ScheduleMapComponent";
-import PlaceSearchBar from "../componets/schedule/PlaceSearchBar";
+import MapComponent from "../components/map/ScheduleMapComponent";
+import PlaceSearchBar from "../components/schedule/PlaceSearchBar";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { motion } from "framer-motion";
 import { FaArrowDown } from "react-icons/fa";

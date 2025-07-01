@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import ScheduleForm from "../componets/schedule/ScheduleForm";
-import MultiDayScheduleResult from "../componets/schedule/MultiDayScheduleResult";
-import MapComponent from "../componets/map/ScheduleMapComponent";
+import ScheduleForm from "../components/schedule/ScheduleForm";
+import MultiDayScheduleResult from "../components/schedule/MultiDayScheduleResult";
+import MapComponent from "../components/map/ScheduleMapComponent";
 import { generateMultiDaySchedule } from "../api/scheduleApi";
 
 const Container = styled.div`
