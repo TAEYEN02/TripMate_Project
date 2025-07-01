@@ -4,22 +4,11 @@
   "private": true,
   "proxy": "http://localhost:8080",
   "dependencies": {
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-<<<<<<< HEAD
     "async": "^3.2.6",
     "axios": "^1.10.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3",
-=======
-    "axios": "^1.10.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.2",
->>>>>>> 8d1750e2444098264ee6d204cd7b7aa2785a441a
     "react-scripts": "5.0.1",
     "styled-components": "^6.1.19",
     "web-vitals": "^2.1.4"
