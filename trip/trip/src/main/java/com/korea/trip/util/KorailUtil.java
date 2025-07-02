@@ -30,7 +30,6 @@ public class KorailUtil {
         return cityStationMap;
     }
 
-
     @PostConstruct
     public void init() {
         cityStationMap = fetchCityStationMap();
@@ -69,6 +68,7 @@ public class KorailUtil {
                     String simplifiedCity = simplifyCityName(rawCityName);
 
                     String stationUrl = "https://apis.data.go.kr/1613000/TrainInfoService/getCtyAcctoTrainSttnList"
+                            + "?serviceKey=" + serviceKey + "&_type=json&cityCode=" + cityCode + "&numOfRows=100";
 
 
                     try {
@@ -109,10 +109,20 @@ public class KorailUtil {
         for (Map.Entry<String, List<StationInfo>> entry : cityStationMap.entrySet()) {
             if (entry.getKey().contains(simplified)) {
                 result.addAll(entry.getValue());
+            } else {
+                for (StationInfo s : entry.getValue()) {
+                    if (s.getStationName().contains(simplified)) {
+                        result.add(s);
+                    }
+                }
+            }
+        }
+        return result; 
     }
 
     // 역명이 MAJOR_KTX_STATIONS 중 하나를 포함하는 역만 필터링 (contains 사용)
     public List<StationInfo> getMajorStationsByCityKeyword(String cityKeyword) {
+        return getStationsByCityKeyword(cityKeyword);
 
     }
     

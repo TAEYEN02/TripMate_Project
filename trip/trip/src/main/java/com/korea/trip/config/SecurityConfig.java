@@ -18,12 +18,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors().and()
-            .csrf().disable() // CSRF 비활성화 (POST 테스트 가능하게)
-            .authorizeHttpRequests(authz -> authz
-                .anyRequest().permitAll() // 모든 요청 허용
-            );
-        
+                .cors().and()
+                .csrf().disable() // CSRF 비활성화 (POST 테스트 가능하게)
+                .authorizeHttpRequests(authz -> authz
+                        .anyRequest().permitAll() // 모든 요청 허용
+                );
+
         return http.build();
     }
 
@@ -34,7 +34,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

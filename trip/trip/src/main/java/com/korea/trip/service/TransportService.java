@@ -55,8 +55,7 @@ public class TransportService {
         System.out.println("요청 도착 도시 (정규화): " + arrCity);
         System.out.println("요청 날짜: " + date);
         System.out.println("요청 출발시간: " + departureTime);
-        
-        // 출발시간 필터링 적용 여부 확인
+
         if (departureTime != null && !departureTime.trim().isEmpty()) {
             System.out.println("✅ 출발시간 필터링 적용: " + departureTime + " 이후 출발편만 표시");
         } else {
@@ -67,17 +66,14 @@ public class TransportService {
         List<String> busDepIds = busUtil.getTerminalIdsByCity(depCity);
         List<String> busArrIds = busUtil.getTerminalIdsByCity(arrCity);
 
-        // --- 비동기 병렬 처리로 버스 API 호출 ---
         List<CompletableFuture<List<BusInfo>>> busFutures = new ArrayList<>();
         for (String depId : busDepIds) {
             for (String arrId : busArrIds) {
-                // 각 조합을 비동기로 호출
                 busFutures.add(busUtil.fetchBusAsync(depId, arrId, date));
             }
         }
-        // 모든 비동기 작업이 끝날 때까지 대기
         CompletableFuture.allOf(busFutures.toArray(new CompletableFuture[0])).join();
-        // 결과 합치기
+
         List<BusInfo> busResults = busFutures.stream()
             .map(CompletableFuture::join)
             .flatMap(List::stream)
@@ -95,7 +91,7 @@ public class TransportService {
                 bus.getDepPlandTime().substring(8, 12),
                 bus.getArrPlandTime().substring(8, 12)))
             .toList();
-            
+
         System.out.println("🚌 버스 필터링 결과: " + busList.size() + "개");
 
         // 🚄 코레일 - 주요역 목록 가져오기
@@ -105,23 +101,19 @@ public class TransportService {
         System.out.println("출발지 주요역 목록: " + depStations);
         System.out.println("도착지 주요역 목록: " + arrStations);
 
-        // --- 비동기 병렬 처리로 코레일 API 호출 ---
         List<CompletableFuture<List<KorailInfo>>> korailFutures = new ArrayList<>();
         for (StationInfo depStation : depStations) {
             for (StationInfo arrStation : arrStations) {
-                // 각 조합을 비동기로 호출
                 korailFutures.add(korailUtil.fetchKorailAsync(depStation.getStationCode(), arrStation.getStationCode(), date));
             }
         }
-        // 모든 비동기 작업이 끝날 때까지 대기
         CompletableFuture.allOf(korailFutures.toArray(new CompletableFuture[0])).join();
-        // 결과 합치기
+
         List<KorailInfo> korailResults = korailFutures.stream()
             .map(CompletableFuture::join)
             .flatMap(List::stream)
             .toList();
 
-        // 결과 스트림 가공
         List<String> korailList = korailResults.stream()
             .filter(train -> train.getDepPlandTime().length() >= 12 && train.getArrPlandTime().length() >= 12)
             .filter(train -> filterByDepartureTime(train.getDepPlandTime(), departureTime))
@@ -134,10 +126,9 @@ public class TransportService {
                 train.getArrPlandTime().substring(8, 12),
                 train.getAdultcharge()))
             .toList();
-            
+
         System.out.println("🚄 기차 필터링 결과: " + korailList.size() + "개");
 
-        // 결과 반환
         TransportResult result = new TransportResult();
         result.setBusOptions(busList.isEmpty() ? List.of("해당 날짜에 버스 정보가 없습니다.") : busList);
         result.setKorailOptions(korailList.isEmpty() ? List.of("해당 날짜에 열차 정보가 없습니다.") : korailList);
@@ -158,29 +149,24 @@ public class TransportService {
      * @return 필터링 통과 여부
      */
     private boolean filterByDepartureTime(String apiDepartureTime, String requestedTime) {
-        // 출발시간이 설정되지 않았으면 모든 결과 반환
         if (requestedTime == null || requestedTime.trim().isEmpty()) {
             return true;
         }
 
         try {
-            // API 시간에서 시간 부분 추출 (HHmm 형식)
-            String apiTime = apiDepartureTime.substring(8, 12); // yyyyMMddHHmm에서 HHmm 부분
-            
-            // 요청된 시간을 HHmm 형식으로 변환
+            String apiTime = apiDepartureTime.substring(8, 12);
             String[] timeParts = requestedTime.split(":");
-            String requestedTimeFormatted = String.format("%02d%02d", 
+            String requestedTimeFormatted = String.format("%02d%02d",
                 Integer.parseInt(timeParts[0]), Integer.parseInt(timeParts[1]));
-            
-            // 시간 비교 (요청된 시간 이후의 출발편만 필터링)
+
             int apiTimeInt = Integer.parseInt(apiTime);
             int requestedTimeInt = Integer.parseInt(requestedTimeFormatted);
-            
+
             return apiTimeInt >= requestedTimeInt;
-            
+
         } catch (Exception e) {
             System.err.println("시간 필터링 오류: " + e.getMessage());
-            return true; // 오류 발생 시 모든 결과 반환
+            return true;
         }
     }
 }

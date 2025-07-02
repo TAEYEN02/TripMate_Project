@@ -1,6 +1,16 @@
 import axios from "axios";
 
-export const generateSchedule = async (data) => {
-  const response = await axios.post('/api/schedules/auto-generate', data);
-  return response.data;
+const BASE_URL = "http://localhost:8080"; // 백엔드 서버 주소
+
+export const generateSchedule = async ({ departure, arrival, date, transportType }) => {
+  return axios.post(`${BASE_URL}/schedule/auto-generate`, {
+    departure,
+    arrival,
+    date,
+    transportType
+  });
+};
+
+export const generateMultiDaySchedule = (data) => {
+  return axios.post("http://localhost:8080/schedule/generate-multi", data);
 };
