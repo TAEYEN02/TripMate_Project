@@ -44,7 +44,7 @@ const MapComponent = ({ places, selectedPlaceId, setSelectedPlaceId }) => {
     }
     const place = places.find((p) => p.id === selectedPlaceId);
     if (place) {
-      setInfoPosition({ lat: place.latitude, lng: place.longitude });
+      setInfoPosition({ lat: place.lat, lng: place.lng });
       setInfoData(place);
     }
     console.log(places);
@@ -58,13 +58,13 @@ const MapComponent = ({ places, selectedPlaceId, setSelectedPlaceId }) => {
         style={{ width: "100%", height: "100%" }}
         level={5}
       >
-        {places.map((place, idx) => (
+        {places.map((place) => (
           <MapMarker
-            key={idx}
+            key={place.id}
             position={{ lat: place.lat, lng: place.lng }}
             clickable={true}
             onClick={() => {
-              if (setSelectedPlaceId) setSelectedPlaceId(idx);
+              if (setSelectedPlaceId) setSelectedPlaceId(place.id);
             }}
           />
         ))}

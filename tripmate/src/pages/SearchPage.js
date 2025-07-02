@@ -1,6 +1,4 @@
-// PlannerPage.jsx (일부 수정)
-
-import React, { useState } from "react";
+import { useState } from "react";
 import styled from "styled-components";
 import ScheduleForm from "../components/planner/PlaceRecomendForm";
 import ScheduleResult from "../components/planner/ScheduleResult";
@@ -68,6 +66,7 @@ const PlannerPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState(null); // 선택된 장소 ID 상태
+  const [filteredPlaces, setFilteredPlaces] = useState([]);
 
   // 일정 추가하기 버튼 클릭 시, 일정 생성 폼으로 포커스 이동 등 원하는 동작 추가 가능
   const handleAddScheduleClick = () => {
@@ -89,7 +88,7 @@ const PlannerPage = () => {
       setLoading(false);
     }
   };
-  // ScheduleResult에서 장소 클릭 시 호출
+
   const handlePlaceClick = (placeId) => {
     setSelectedPlaceId(placeId);
   };
@@ -114,12 +113,13 @@ const PlannerPage = () => {
             schedule={schedule}
             onPlaceClick={setSelectedPlaceId}  
             selectedPlaceId={selectedPlaceId}
+            onFilteredPlacesChange={setFilteredPlaces}
           />
         )}
       </LeftPane>
       <RightPane>
          <MapComponent
-          places={schedule?.places || []}
+          places={filteredPlaces}
           selectedPlaceId={selectedPlaceId}  
           setSelectedPlaceId={setSelectedPlaceId}
         />

@@ -1,6 +1,5 @@
 package com.korea.trip.util;
 
-//필터링을 쉽게 하기 위해 시간대 Enum을 하나 정의
 public enum TimeRange {
     MORNING(5, 12), // 05:00 ~ 11:59
     AFTERNOON(12, 18), // 12:00 ~ 17:59

@@ -1,15 +1,24 @@
-import React from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import styled from "styled-components";
 
-const CategorySection = styled.div`
-  margin-bottom: 1.5rem;
+const CategoryFilter = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
 `;
+const FilterButton = styled.button`
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background-color: ${({ active }) => (active ? "#4caf50" : "#e0e0e0")};
+  color: ${({ active }) => (active ? "white" : "#333")};
+  cursor: pointer;
+  font-weight: 600;
 
-const CategoryTitle = styled.h3`
-  margin-bottom: 0.75rem;
-  border-left: 6px solid #4caf50;
-  padding-left: 10px;
-  color: #2e7d32;
+  &:hover {
+    background-color: #81c784;
+    color: white;
+  }
 `;
 
 const PlaceList = styled.ul`
@@ -46,39 +55,84 @@ const PlaceAddress = styled.span`
   color: #666;
 `;
 
-const ScheduleResult = ({ schedule, onPlaceClick, selectedPlaceId }) => {
-  if (!schedule || !schedule.places) return null;
+const ScheduleResult = ({ schedule, onPlaceClick, selectedPlaceId, onFilteredPlacesChange }) => {
+  const [mainCategory, setMainCategory] = useState("여행");
+  const [subCategory, setSubCategory] = useState(null);
 
-  // 카테고리별 그룹화
-  const grouped = schedule.places.reduce((acc, place) => {
-    const cat = place.category || "기타";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(place);
-    return acc;
-  }, {});
+  // 1) 카테고리별로 분리 및 파싱
+  const parsedPlaces = useMemo(() => {
+    return (schedule?.places || []).map((place) => {
+      const parts = place.category?.split(" > ") || ["기타"];
+      return {
+        ...place,
+        mainCategory: parts[0],
+        subCategory: parts[1] || null,
+      };
+    });
+  }, [schedule]);
+
+  // 2) 메인 카테고리 목록
+  const mainCategories = useMemo(() => {
+    return [...new Set(parsedPlaces.map(p => p.mainCategory))];
+  }, [parsedPlaces]);
+
+  // 3) 필터된 장소 목록 (메모이제이션)
+  const filteredPlaces = useMemo(() => {
+    return parsedPlaces.filter((p) =>
+      p.mainCategory === mainCategory &&
+      (subCategory ? p.subCategory === subCategory : true)
+    );
+  }, [parsedPlaces, mainCategory, subCategory]);
+
+  // 4) 부모에 필터링된 장소 전달 (변경 시에만)
+  const prevFilteredRef = useRef();
+  useEffect(() => {
+    if (onFilteredPlacesChange) {
+      const prev = prevFilteredRef.current;
+      if (JSON.stringify(prev) !== JSON.stringify(filteredPlaces)) {
+        onFilteredPlacesChange(filteredPlaces);
+        prevFilteredRef.current = filteredPlaces;
+      }
+    }
+  }, [filteredPlaces, onFilteredPlacesChange]);
+
+  if (!schedule || !schedule.places) return null;
 
   return (
     <div>
-      {Object.entries(grouped).map(([category, places]) => (
-        <CategorySection key={category}>
-          <CategoryTitle>{category}</CategoryTitle>
-          <PlaceList>
-            {places.map((p,idx) => (
-              <PlaceItem
-                key={idx} 
-                onClick={() => onPlaceClick(idx)}
-                selected={selectedPlaceId === idx}
-                title={`${p.name}\n${p.address}`}
-              >
-                <div>
-                  <PlaceName>{p.name}</PlaceName><br />
-                  <PlaceAddress>{p.address}</PlaceAddress>
-                </div>
-              </PlaceItem>
-            ))}
-          </PlaceList>
-        </CategorySection>
-      ))}
+      <CategoryFilter>
+        {mainCategories.map((mainCat) => (
+          <FilterButton
+            key={mainCat}
+            active={mainCat === mainCategory}
+            onClick={() => {
+              setMainCategory(mainCat);
+              setSubCategory(null);
+            }}
+          >
+            {mainCat}
+          </FilterButton>
+        ))}
+      </CategoryFilter>
+
+      {/* 서브 카테고리 버튼도 추가 가능 */}
+      {/* ... */}
+
+      <PlaceList>
+        {filteredPlaces.map((p) => (
+          <PlaceItem
+            key={p.id}
+            onClick={() => onPlaceClick(p.id)}
+            selected={selectedPlaceId === p.id}
+            title={`${p.name}\n${p.address}`}
+          >
+            <div>
+              <PlaceName>{p.name}</PlaceName><br />
+              <PlaceAddress>{p.address}</PlaceAddress>
+            </div>
+          </PlaceItem>
+        ))}
+      </PlaceList>
     </div>
   );
 };

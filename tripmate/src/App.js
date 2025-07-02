@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import Navbar from './components/common/Navbar';
 import StartPlannerPage from './pages/StartPlannerPage';
-import PlannerPage from './pages/PlannerPage';
+import PlannerPage from './pages/SearchPage';
 import SchedulePage from './pages/SchedulePage';
 import './App.css';
 import MySchedulePage from './pages/MySchedulePage';
