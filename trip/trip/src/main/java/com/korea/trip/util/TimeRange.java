@@ -1,6 +1,5 @@
 package com.korea.trip.util;
 
-
 public enum TimeRange {
     MORNING(5, 12), // 05:00 ~ 11:59
     AFTERNOON(12, 18), // 12:00 ~ 17:59
