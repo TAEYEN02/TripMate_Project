@@ -1,51 +1,114 @@
-import React from "react";
-import styled from "styled-components";
+import React, { useState, useEffect } from 'react';
+import { getSeoulToBusanTransport } from '../../api/transportApi';
+import './TransportResultCard.css';
 
-// 전체 결과 래퍼
-const ResultWrapper = styled.div`
-  margin-top: 1.5rem; /* mt-6 */
-  display: flex;
-  flex-direction: column;
-  gap: 1rem; /* space-y-4 */
-`;
+const TransportResultCard = () => {
+  const [transportData, setTransportData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-// 제목
-const Title = styled.h2`
-  font-size: 1.125rem; /* text-lg */
-  font-weight: 600;
-  color: #2d3748;
-`;
+  useEffect(() => {
+    const fetchTransportData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(getSeoulToBusanTransport(), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setTransportData(data);
+        setError(null);
+      } catch (err) {
+        console.error('교통수단 정보 조회 실패:', err);
+        setError('교통수단 정보를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-// 교통 옵션 카드
-const OptionCard = styled.div`
-  border: 1px solid #e2e8f0;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  background-color: white;
-`;
+    fetchTransportData();
+  }, []);
 
-// 텍스트
-const InfoText = styled.p`
-  font-size: 0.95rem;
-  color: #4a5568;
-  margin: 0.25rem 0;
-`;
+  if (loading) {
+    return (
+      <div className="transport-result-card">
+        <div className="loading">교통수단 정보를 불러오는 중...</div>
+      </div>
+    );
+  }
 
-const TransportResultCard = ({ result }) => {
+  if (error) {
+    return (
+      <div className="transport-result-card">
+        <div className="error">{error}</div>
+      </div>
+    );
+  }
+
+  if (!transportData) {
+    return (
+      <div className="transport-result-card">
+        <div className="no-data">교통수단 정보가 없습니다.</div>
+      </div>
+    );
+  }
+
   return (
-    <ResultWrapper>
-      <Title>추천 교통편</Title>
-      {result.options.map((option, idx) => (
-        <OptionCard key={idx}>
-          <InfoText>종류: {option.type}</InfoText>
-          <InfoText>출발 시간: {option.departureTime}</InfoText>
-          <InfoText>도착 시간: {option.arrivalTime}</InfoText>
-          <InfoText>가격: {option.price}원</InfoText>
-        </OptionCard>
-      ))}
-    </ResultWrapper>
+    <div className="transport-result-card">
+      <h3>서울 → 부산 교통수단 정보</h3>
+      
+      {/* 기차 정보 */}
+      <div className="transport-section">
+        <h4>🚄 기차 정보</h4>
+        {transportData.korailOptions && transportData.korailOptions.length > 0 ? (
+          <div className="transport-list">
+            {transportData.korailOptions.map((train, index) => (
+              <div key={index} className="transport-item">
+                <div className="transport-info">
+                  <span className="transport-name">{train.trainGradeName}</span>
+                  <span className="transport-number">{train.trainNo}</span>
+                </div>
+                <div className="transport-time">
+                  <span>{train.depPlandTime} → {train.arrPlandTime}</span>
+                </div>
+                <div className="transport-price">
+                  {train.adultCharge ? `${train.adultCharge.toLocaleString()}원` : '가격 정보 없음'}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>기차 정보가 없습니다.</p>
+        )}
+      </div>
+
+      {/* 버스 정보 */}
+      <div className="transport-section">
+        <h4>🚌 버스 정보</h4>
+        {transportData.busOptions && transportData.busOptions.length > 0 ? (
+          <div className="transport-list">
+            {transportData.busOptions.map((bus, index) => (
+              <div key={index} className="transport-item">
+                <div className="transport-info">
+                  <span className="transport-name">{bus.gradeNm}</span>
+                  <span className="transport-number">{bus.routeId}</span>
+                </div>
+                <div className="transport-time">
+                  <span>{bus.depPlandTime} → {bus.arrPlandTiem}</span>
+                </div>
+                <div className="transport-price">
+                  {bus.charge ? `${bus.charge.toLocaleString()}원` : '가격 정보 없음'}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>버스 정보가 없습니다.</p>
+        )}
+      </div>
+    </div>
   );
 };
 
-export default TransportResultCard;
+export default TransportResultCard; 

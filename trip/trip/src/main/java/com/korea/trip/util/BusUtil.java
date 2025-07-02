@@ -14,6 +14,8 @@ import com.korea.trip.dto.BusInfo;
 import com.korea.trip.dto.TerminalInfo;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Async;
+import java.util.concurrent.CompletableFuture;
 
 @Component
 public class BusUtil {
@@ -166,5 +168,15 @@ public class BusUtil {
                         bus.getDepPlandTime().substring(8, 12),
                         bus.getArrPlandTime().substring(8, 12)))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 버스 API 비동기 호출용 메서드 (병렬 처리 지원)
+     */
+    @Async("taskExecutor")
+    public CompletableFuture<List<BusInfo>> fetchBusAsync(String depTerminalId, String arrTerminalId, String date) {
+        // 기존 동기 메서드 활용
+        List<BusInfo> result = fetchBus(depTerminalId, arrTerminalId, date);
+        return CompletableFuture.completedFuture(result);
     }
 }

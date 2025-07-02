@@ -1,104 +1,129 @@
 import React from "react";
-import styled from "styled-components";
 
-// 전체 폼 래퍼
-const FormWrapper = styled.div`
-  padding: 1rem;
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
+// 교통편 리스트 + 페이지네이션 컴포넌트 (탭/상태는 상위에서 관리)
+const TransportForm = ({ list, selected, onSelect, page, setPage, totalPages }) => {
+  // 한 페이지에 보여줄 아이템 수는 상위에서 관리한다고 가정
+  // list, page, setPage, totalPages 모두 props로 받음
 
-// 입력 필드 컨테이너
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
+  // 현재 페이지에 보여줄 리스트 슬라이스
+  const PAGE_SIZE = 5;
+  const pagedList = list.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-// 레이블
-const Label = styled.label`
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-  color: #2d3748;
-`;
-
-// 인풋
-const Input = styled.input`
-  padding: 0.5rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 0.375rem;
-  font-size: 1rem;
-  width: 100%;
-  &:focus {
-    outline: none;
-    border-color: #3182ce;
-    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.3);
+  // 4자리 숫자(0630) → 06:30 변환 함수
+  function formatTime(str) {
+    if (!str || str.length !== 4) return str;
+    return str.slice(0, 2) + ':' + str.slice(2, 4);
   }
-`;
-
-// 버튼
-const SubmitButton = styled.button`
-  background-color: #4299e1;
-  color: white;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: #3182ce;
-  }
-`;
-
-const TransportForm = ({ form, setForm, onSubmit }) => {
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
 
   return (
-    <FormWrapper>
-      <Field>
-        <Label>출발지</Label>
-        <Input
-          type="text"
-          name="departure"
-          value={form.departure}
-          onChange={handleChange}
-          placeholder="서울"
-        />
-      </Field>
+    <div>
+      {/* 교통편 리스트 렌더링 */}
+      <div>
+        {pagedList.map((item, idx) => {
+          // item이 문자열이면 파싱
+          let type = "-", dep = "-", arr = "-", depTime = "-", arrTime = "-";
+          if (typeof item === "string") {
+            const parts = item.split("|").map(s => s.trim());
+            const trainTypes = ["KTX", "SRT", "ITX"];
+            const isTrain = trainTypes.some(t => (parts[0] || "").toUpperCase().includes(t));
 
-      <Field>
-        <Label>도착지</Label>
-        <Input
-          type="text"
-          name="arrival"
-          value={form.arrival}
-          onChange={handleChange}
-          placeholder="부산"
-        />
-      </Field>
-
-      <Field>
-        <Label>날짜</Label>
-        <Input
-          type="date"
-          name="date"
-          value={form.date}
-          onChange={handleChange}
-        />
-      </Field>
-
-      <SubmitButton onClick={onSubmit}>교통편 추천받기</SubmitButton>
-    </FormWrapper>
+            if (parts.length === 4) {
+              // 버스/기차: 시간은 parts[3]
+              type = parts[0] || "-";
+              const stationStr = parts[1];
+              let timeStr = parts[3];
+              const [depStation, arrStation] = stationStr.split("→").map(s => s.trim());
+              dep = depStation || "-";
+              arr = arrStation || "-";
+              if (timeStr && timeStr.includes("→")) {
+                const [depT, arrT] = timeStr.split("→").map(s => s.trim());
+                depTime = depT || "-";
+                arrTime = arrT || "-";
+              } else if (timeStr && timeStr.length >= 8) {
+                depTime = timeStr.slice(0, 4);
+                arrTime = timeStr.slice(4, 8);
+              } else {
+                // 전체 문자열에서 4자리 숫자 2개를 찾아서 시간으로 사용
+                const timeMatches = item.match(/(\d{4})/g);
+                if (timeMatches && timeMatches.length >= 2) {
+                  depTime = timeMatches[0];
+                  arrTime = timeMatches[1];
+                } else {
+                  depTime = arrTime = '-';
+                }
+              }
+            } else if (parts.length >= 3) {
+              // 기차: 시간은 parts[2]
+              type = parts[0] || "-";
+              const stationStr = parts[1];
+              let timeStr = parts[2];
+              const [depStation, arrStation] = stationStr.split("→").map(s => s.trim());
+              dep = depStation || "-";
+              arr = arrStation || "-";
+              if (timeStr && timeStr.includes("→")) {
+                const [depT, arrT] = timeStr.split("→").map(s => s.trim());
+                depTime = depT || "-";
+                arrTime = arrT || "-";
+              } else if (timeStr && timeStr.length >= 8) {
+                depTime = timeStr.slice(0, 4);
+                arrTime = timeStr.slice(4, 8);
+              } else {
+                const timeMatches = item.match(/(\d{4})/g);
+                if (timeMatches && timeMatches.length >= 2) {
+                  depTime = timeMatches[0];
+                  arrTime = timeMatches[1];
+                } else {
+                  depTime = arrTime = '-';
+                }
+              }
+            } else {
+              dep = item;
+              arr = "";
+              depTime = "";
+              arrTime = "";
+            }
+          }
+          return (
+            <div
+              key={idx}
+              onClick={() => onSelect(item)}
+              style={{
+                border: selected === item ? "2px solid #111" : "1px solid #eee",
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 8,
+                cursor: "pointer",
+                background: selected === item ? "#e6f0ff" : "#fafbfc"
+              }}
+            >
+              <div style={{ fontWeight: 600, color: "#2a4d8f", marginBottom: 4 }}>{type}</div>
+              <div>{dep} → {arr}</div>
+              <div style={{ color: "#555", marginTop: 4 }}>
+                {formatTime(depTime)} - {formatTime(arrTime)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* 페이지네이션 버튼 */}
+      <div style={{ display: "flex", justifyContent: "center", margin: "16px 0" }}>
+        <button
+          onClick={() => setPage(page - 1)}
+          disabled={page === 0}
+          style={{ marginRight: 8, padding: "6px 18px", borderRadius: 6, border: "1px solid #ccc", background: page === 0 ? "#eee" : "#fff", color: "#333", cursor: page === 0 ? "not-allowed" : "pointer" }}
+        >
+          이전
+        </button>
+        <span style={{ alignSelf: "center", fontSize: 15 }}>{page + 1} / {totalPages === 0 ? 1 : totalPages}</span>
+        <button
+          onClick={() => setPage(page + 1)}
+          disabled={page >= totalPages - 1}
+          style={{ marginLeft: 8, padding: "6px 18px", borderRadius: 6, border: "1px solid #ccc", background: page >= totalPages - 1 ? "#eee" : "#fff", color: "#333", cursor: page >= totalPages - 1 ? "not-allowed" : "pointer" }}
+        >
+          다음
+        </button>
+      </div>
+    </div>
   );
 };
 

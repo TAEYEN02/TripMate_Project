@@ -11,6 +11,5 @@ public class TransportRequest {
     private String departure;
     private String arrival;
     private String date;
-    
-    
+    private String departureTime; // 출발시간 (HH:mm 형식)
 }
