@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { getTransportInfo } from "../../../api/transportApi";
-import TransportForm from "../../transport/TransportForm";
+import { getTransportInfo } from "../../api/transportApi";
+import TransportForm from "../transport/TransportForm";
 
 // 날짜 포맷 함수
 const formatDate = (date) => {
