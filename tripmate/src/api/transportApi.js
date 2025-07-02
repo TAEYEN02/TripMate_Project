@@ -1,7 +1,7 @@
 import axios from 'axios';
-import DateRangeModal from "../componets/common/Modal/DateRangeModal";
-import TimeSelectModal from "../componets/common/Modal/TimeSelectModal";
-import TransportSelectModal from "../componets/common/Modal/TransportSelectModal";
+import DateRangeModal from "../components/Modal/DateRangeModal";
+import TimeSelectModal from "../components/Modal/TimeSelectModal";
+import TransportSelectModal from "../components/Modal/TransportSelectModal";
 
 export const searchTransport = async ({ departure, arrival, date }) => {
   const response = await axios.post('/api/transport/search', {
