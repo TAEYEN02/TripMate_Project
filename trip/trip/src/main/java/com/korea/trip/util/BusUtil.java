@@ -74,33 +74,12 @@ public class BusUtil {
     }
 
     private String extractCityFromTerminalName(String terminalNm) {
-        // 더 이상 KNOWN_CITIES를 사용하지 않고, 항상 '기타' 반환
+
         return "기타";
     }
 
     // 도시명 기준으로 터미널 ID 리스트 가져오기
     public List<String> getTerminalIdsByCity(String cityName) {
-        List<String> ids = new ArrayList<>();
-        // key로 먼저 찾기
-        if (cityTerminalMap.containsKey(cityName)) {
-            for (TerminalInfo t : cityTerminalMap.get(cityName)) {
-                ids.add(t.getTerminalId());
-            }
-        }
-        // value(터미널명)에서도 찾기
-        for (List<TerminalInfo> list : cityTerminalMap.values()) {
-            for (TerminalInfo t : list) {
-                if (t.getTerminalName().contains(cityName) && !ids.contains(t.getTerminalId())) {
-                    ids.add(t.getTerminalId());
-                }
-            }
-        }
-        return ids;
-    }
-
-    // 단일 터미널 ID 기준 버스 정보 조회
-    public List<BusInfo> fetchBus(String depTerminalId, String arrTerminalId, String date) {
-        List<BusInfo> results = new ArrayList<>();
 
         String url = "https://apis.data.go.kr/1613000/ExpBusInfoService/getStrtpntAlocFndExpbusInfo"
                 + "?serviceKey=" + serviceKey
