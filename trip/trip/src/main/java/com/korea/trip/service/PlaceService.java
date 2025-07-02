@@ -5,9 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.korea.trip.dto.PlaceDto;
-import com.korea.trip.dto.place.PlaceResponse;
-import com.korea.trip.dto.place.PlaceSearchRequest;
+
 import com.korea.trip.models.Place;
 import com.korea.trip.repositories.PlaceRepository;
 import com.korea.trip.util.KakaoPlaceUtil;
@@ -43,6 +41,7 @@ public class PlaceService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 장소가 존재하지 않습니다."));
         return convertToResponse(place);
     }
+
     private PlaceResponse convertToResponse(Place place) {
         return PlaceResponse.builder()
                 .id(place.getId())
@@ -56,4 +55,3 @@ public class PlaceService {
                 .build();
     }
 
-}

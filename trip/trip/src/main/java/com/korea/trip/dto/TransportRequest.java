@@ -8,9 +8,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransportRequest {
-	private String transportType;
-    private String departure;
-    private String arrival;
-    private String date;
-    private String timeRange; 
+
 }

@@ -11,5 +11,5 @@ public class TerminalInfo {
     private String terminalId;
     private String terminalName;
     private String city;
-   
+
 }
