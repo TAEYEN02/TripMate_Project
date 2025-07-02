@@ -1,18 +1,18 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import DateRangeModal from "../components/common/Modal/DateRangeModal";
 import TimeSelectModal from "../components/common/Modal/TimeSelectModal";
 import TransportSelectModal from "../components/common/Modal/TransportSelectModal";
+import { getTransportInfo } from "../api/transportApi";
 
-// 페이지 전체 래퍼
+// 스타일 정의
 const PageWrapper = styled.div`
   padding: 2rem;
   max-width: 800px;
   margin: 0 auto;
 `;
 
-// 제목
 const Title = styled.h1`
   font-size: 2rem;
   font-weight: 700;
@@ -21,7 +21,6 @@ const Title = styled.h1`
   text-align: center;
 `;
 
-// 설명
 const Description = styled.p`
   font-size: 1.1rem;
   color: #4a5568;
@@ -29,7 +28,6 @@ const Description = styled.p`
   margin-bottom: 3rem;
 `;
 
-// 시작 버튼
 const StartButton = styled.button`
   background: #2563eb;
   color: white;
@@ -50,70 +48,133 @@ const StartButton = styled.button`
 
 const StartPlannerPage = () => {
   const navigate = useNavigate();
-  
-  // 모달 상태 관리
+
+  // 모달 상태
   const [showDateModal, setShowDateModal] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
-  const [showTransportModal, setShowTransportModal] = useState(false);
-  
-  // 선택된 데이터 상태
+  const [showTransportModal, setShowTransportModal] = useState({ visible: false, mode: "go" });
+
+  // 선택값
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [selectedTimes, setSelectedTimes] = useState(null);
-  const [selectedTransport, setSelectedTransport] = useState(null);
-  
-  // 모달 단계 관리
+  const [selectedGoTransport, setSelectedGoTransport] = useState(null);
+  const [selectedReturnTransport, setSelectedReturnTransport] = useState(null);
+
+  // 단계 상태
   const [currentStep, setCurrentStep] = useState(1);
 
-  // 날짜 선택 완료 핸들러
+  // 교통편 데이터 캐시 및 로딩
+  const [transportCache, setTransportCache] = useState({});
+  const [currentTransportData, setCurrentTransportData] = useState(null);
+  const [loadingGo, setLoadingGo] = useState(false);
+  const [loadingReturn, setLoadingReturn] = useState(false);
+
+  // 날짜 선택 완료
   const handleDateSelect = (dateRange) => {
     setSelectedDateRange(dateRange);
     setShowDateModal(false);
     setShowTimeModal(true);
     setCurrentStep(2);
+    setTransportCache({});
+    setSelectedGoTransport(null);
+    setSelectedReturnTransport(null);
   };
 
-  // 시간 선택 완료 핸들러
+  // 시간 선택 완료
   const handleTimeSelect = (times) => {
     setSelectedTimes(times);
     setShowTimeModal(false);
-    setShowTransportModal(true);
-    setCurrentStep(3);
   };
 
-  // 교통편 선택 완료 핸들러
-  const handleTransportSelect = (transport) => {
-    setSelectedTransport(transport);
-    setShowTransportModal(false);
-    
-    // 모든 정보가 완료되면 PlannerPage로 이동
+  // 교통편 데이터 가져오기 및 캐시
+  const fetchAndCacheTransport = async (params, mode) => {
+    const key = JSON.stringify(params);
+    if (transportCache[key]) {
+      setCurrentTransportData(transportCache[key]);
+      return transportCache[key];
+    }
+    if (mode === "go") setLoadingGo(true);
+    else setLoadingReturn(true);
+
+    setCurrentTransportData(null);
+    const data = await getTransportInfo(params);
+    setTransportCache(prev => ({ ...prev, [key]: data }));
+    setCurrentTransportData(data);
+
+    if (mode === "go") setLoadingGo(false);
+    else setLoadingReturn(false);
+    return data;
+  };
+
+  // 교통편 모달 열기
+  const openTransportModal = async (mode) => {
+    const date = mode === "go" ? selectedDateRange.startDate : selectedDateRange.endDate;
+    const time = mode === "go" ? selectedTimes.startDepart : selectedTimes.endDepart;
+    const departure = mode === "go" ? "서울" : "부산";
+    const arrival = mode === "go" ? "부산" : "서울";
+
+    const params = {
+      departure,
+      arrival,
+      date: `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`,
+      departureTime: time
+    };
+
+    setShowTransportModal({ visible: true, mode });
+    await fetchAndCacheTransport(params, mode);
+  };
+
+  // 시간 선택 후 자동으로 교통편(가는 날) 모달 열기
+  useEffect(() => {
+    if (selectedTimes && currentStep === 2) {
+      const showGoModal = async () => {
+        await openTransportModal("go");
+        setCurrentStep(3);
+      };
+      showGoModal();
+    }
+  }, [selectedTimes, currentStep]);
+
+  // 가는 날 선택 완료
+  const handleTransportNext = (goTransport) => {
+    setSelectedGoTransport(goTransport);
+    setShowTransportModal({ visible: false, mode: "go" });
+
+    setTimeout(() => {
+      setShowTransportModal({ visible: true, mode: "return" });
+      openTransportModal("return").then(() => setCurrentStep(4));
+    }, 0);
+  };
+
+  // 오는 날 선택 완료
+  const handleTransportSelect = (returnTransport) => {
+    setSelectedReturnTransport(returnTransport);
+    setShowTransportModal({ visible: false, mode: "return" });
+
     navigate("/planner", {
       state: {
         departure: "서울",
-        arrival: "부산", 
+        arrival: "부산",
         date: selectedDateRange.startDate,
-        transport: transport
+        goTransport: selectedGoTransport,
+        returnTransport
       }
     });
   };
 
-  // 교통편 다음 단계 핸들러 (가는 날 선택 후 오는 날 선택)
-  const handleTransportNext = (goTransport) => {
-    setSelectedTransport({ go: goTransport });
-    setCurrentStep(4); // 오는날 단계로 변경
-  };
-
-  // 이전 단계로 돌아가기
+  // 뒤로 가기
   const handleBack = () => {
     if (currentStep === 4) {
-      // 오는날에서 가는날로 돌아가기
-      setCurrentStep(3);
+      setShowTransportModal({ visible: false, mode: "return" });
+      setTimeout(() => {
+        setShowTransportModal({ visible: true, mode: "go" });
+        openTransportModal("go").then(() => setCurrentStep(3));
+      }, 0);
     } else if (currentStep === 3) {
-      // 가는날에서 시간 선택으로 돌아가기
-      setShowTransportModal(false);
+      setShowTransportModal({ visible: false, mode: "go" });
       setShowTimeModal(true);
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      // 시간 선택에서 날짜 선택으로 돌아가기
       setShowTimeModal(false);
       setShowDateModal(true);
       setCurrentStep(1);
@@ -123,23 +184,14 @@ const StartPlannerPage = () => {
   return (
     <PageWrapper>
       <Title>🚀 여행 계획 시작하기</Title>
-      <Description>
-        간단한 몇 단계를 거쳐 최적의 여행 일정을 만들어보세요!
-      </Description>
-      
-      <StartButton onClick={() => setShowDateModal(true)}>
-        여행 계획 시작하기
-      </StartButton>
+      <Description>간단한 몇 단계를 거쳐 최적의 여행 일정을 만들어보세요!</Description>
 
-      {/* 날짜 범위 선택 모달 */}
+      <StartButton onClick={() => setShowDateModal(true)}>여행 계획 시작하기</StartButton>
+
       {showDateModal && (
-        <DateRangeModal
-          onClose={() => setShowDateModal(false)}
-          onSelect={handleDateSelect}
-        />
+        <DateRangeModal onClose={() => setShowDateModal(false)} onSelect={handleDateSelect} />
       )}
 
-      {/* 시간 선택 모달 */}
       {showTimeModal && selectedDateRange && (
         <TimeSelectModal
           startDate={selectedDateRange.startDate}
@@ -149,16 +201,25 @@ const StartPlannerPage = () => {
         />
       )}
 
-      {/* 교통편 선택 모달 */}
-      {showTransportModal && selectedTimes && selectedDateRange && (
+      {showTransportModal.visible && selectedTimes && selectedDateRange && (
         <TransportSelectModal
-          date={currentStep === 3 ? selectedDateRange.startDate : selectedDateRange.endDate}
-          time={currentStep === 3 ? selectedTimes.startDepart : selectedTimes.endDepart}
-          mode={currentStep === 3 ? "go" : "return"}
+          date={
+            showTransportModal.mode === "go"
+              ? selectedDateRange.startDate
+              : selectedDateRange.endDate
+          }
+          time={
+            showTransportModal.mode === "go"
+              ? selectedTimes.startDepart
+              : selectedTimes.endDepart
+          }
+          mode={showTransportModal.mode}
           onSelect={handleTransportSelect}
-          onNext={currentStep === 3 ? handleTransportNext : undefined}
-          onClose={() => setShowTransportModal(false)}
+          onNext={showTransportModal.mode === "go" ? handleTransportNext : undefined}
           onBack={currentStep === 4 ? handleBack : undefined}
+          onClose={() => setShowTransportModal({ visible: false, mode: showTransportModal.mode })}
+          transportData={currentTransportData}
+          loading={showTransportModal.mode === "go" ? loadingGo : loadingReturn}
         />
       )}
     </PageWrapper>

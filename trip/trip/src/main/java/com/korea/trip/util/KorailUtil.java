@@ -13,6 +13,8 @@ import com.korea.trip.dto.KorailInfo;
 import com.korea.trip.dto.StationInfo;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Async;
+import java.util.concurrent.CompletableFuture;
 
 @Component
 public class KorailUtil {
@@ -27,8 +29,6 @@ public class KorailUtil {
     public Map<String, List<StationInfo>> getCityStationMap() {
         return cityStationMap;
     }
-
-
 
     @PostConstruct
     public void init() {
@@ -48,7 +48,6 @@ public class KorailUtil {
     }
 
     private String extractCityFromStationName(String stationName) {
-        // 더 이상 KNOWN_CITIES를 사용하지 않고, 항상 '기타' 반환
         return "기타";
     }
 
@@ -70,6 +69,7 @@ public class KorailUtil {
 
                     String stationUrl = "https://apis.data.go.kr/1613000/TrainInfoService/getCtyAcctoTrainSttnList"
                             + "?serviceKey=" + serviceKey + "&_type=json&cityCode=" + cityCode + "&numOfRows=100";
+
 
                     try {
                         ResponseEntity<String> response = restTemplate.getForEntity(stationUrl, String.class);
@@ -123,6 +123,7 @@ public class KorailUtil {
     // 역명이 MAJOR_KTX_STATIONS 중 하나를 포함하는 역만 필터링 (contains 사용)
     public List<StationInfo> getMajorStationsByCityKeyword(String cityKeyword) {
         return getStationsByCityKeyword(cityKeyword);
+
     }
     
     public List<KorailInfo> fetchKorail(String depStationId, String arrStationId, String date) {
@@ -220,5 +221,15 @@ public class KorailUtil {
         }
 
         return allResults;
+    }
+
+    /**
+     * 코레일 API 비동기 호출용 메서드 (병렬 처리 지원)
+     */
+    @Async("taskExecutor")
+    public CompletableFuture<List<KorailInfo>> fetchKorailAsync(String depStationId, String arrStationId, String date) {
+        // 기존 동기 메서드 활용
+        List<KorailInfo> result = fetchKorail(depStationId, arrStationId, date);
+        return CompletableFuture.completedFuture(result);
     }
 }

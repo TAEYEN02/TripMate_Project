@@ -1,6 +1,17 @@
+server:
+  port: 10000
 korail:
   service-key: VbGT1gAGtB0pWwVeEzwW/a3QsjZx5CnJrEwi4qXcekuJRem4Eai2V/NbbjlbVUh3DlxMu0Pg94aJrjOFqFryAQ==
 bus:
   service-key: VbGT1gAGtB0pWwVeEzwW/a3QsjZx5CnJrEwi4qXcekuJRem4Eai2V/NbbjlbVUh3DlxMu0Pg94aJrjOFqFryAQ==
 kakao:
   api-key: 8f8539e18dbd6168eaf2123a48a02fa0
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
