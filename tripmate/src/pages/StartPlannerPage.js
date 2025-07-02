@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import DateRangeModal from "../components/common/Modal/DateRangeModal";
-import TimeSelectModal from "../components/common/Modal/TimeSelectModal";
-import TransportSelectModal from "../components/common/Modal/TransportSelectModal";
+import DateRangeModal from "../components/Modal/DateRangeModal";
+import TimeSelectModal from "../components/Modal/TimeSelectModal";
+import TransportSelectModal from "../components/Modal/TransportSelectModal";
 import { getTransportInfo } from "../api/transportApi";
 
 // 스타일 정의
