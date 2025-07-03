@@ -40,7 +40,6 @@ public class PlaceController {
 		return ResponseEntity.ok(results);
 	}
 
-	// 장소 상세 조회 (DB 기반) -> 이거 왜함?
 	@GetMapping("/{placeId}")
 	public ResponseEntity<PlaceResponse> getPlaceDetail(@PathVariable("placeId") Long placeId) {
 		PlaceResponse place = placeService.getPlaceById(placeId);
