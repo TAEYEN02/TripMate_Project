@@ -5,6 +5,10 @@ import DateRangeModal from "../components/Modal/DateRangeModal";
 import TimeSelectModal from "../components/Modal/TimeSelectModal";
 import TransportSelectModal from "../components/Modal/TransportSelectModal";
 import { getTransportInfo } from "../api/transportApi";
+import dayjs from "dayjs";
+import SimpleModal from "../components/common/SimpleModal";
+import SearchPage from "./SearchPage";
+import SchedulePage from "./SchedulePage";
 
 // 스타일 정의
 const PageWrapper = styled.div`
@@ -53,6 +57,8 @@ const StartPlannerPage = () => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [showTransportModal, setShowTransportModal] = useState({ visible: false, mode: "go" });
+  const [openSearchModal, setOpenSearchModal] = useState({ open: false, departure: "서울", arrival: "부산" });
+  const [openScheduleModal, setOpenScheduleModal] = useState(false);
 
   // 선택값
   const [selectedDateRange, setSelectedDateRange] = useState(null);
@@ -151,11 +157,12 @@ const StartPlannerPage = () => {
     setSelectedReturnTransport(returnTransport);
     setShowTransportModal({ visible: false, mode: "return" });
 
-    navigate("/planner", {
+    navigate("/my-schedule", {
       state: {
         departure: "서울",
         arrival: "부산",
         date: selectedDateRange.startDate,
+        days: dayjs(selectedDateRange.endDate).diff(dayjs(selectedDateRange.startDate), "day") + 1, //여행기간(일수)
         goTransport: selectedGoTransport,
         returnTransport
       }
@@ -179,6 +186,34 @@ const StartPlannerPage = () => {
       setShowDateModal(true);
       setCurrentStep(1);
     }
+  };
+
+  // 예시: 출발지/도착지 값을 받아서 모달을 염
+  const handleOpenSearchModal = () => {
+    // 실제로는 StartPlannerPage에서 선택된 값을 사용
+    setOpenSearchModal({ open: true, departure: currentTransportData?.departure || "서울", arrival: currentTransportData?.arrival || "부산" });
+  };
+
+  // 예시: 출발지/도착지/날짜/박수 값을 받아서 모달을 염
+  const handleOpenScheduleModal = () => {
+    console.log("selectedDateRange:", selectedDateRange);
+    if (!selectedDateRange?.startDate || !selectedDateRange?.endDate) {
+      alert("여행 날짜를 먼저 선택해 주세요!");
+      return;
+    }
+    const startDate = selectedDateRange.startDate;
+    const endDate = selectedDateRange.endDate;
+    const days = dayjs(endDate).diff(dayjs(startDate), "day") + 1;
+    const departure = selectedGoTransport?.departure || currentTransportData?.departure || "서울";
+    const arrival = selectedGoTransport?.arrival || currentTransportData?.arrival || "부산";
+    const date = dayjs(startDate).format("YYYY-MM-DD");
+    console.log("startDate:", startDate, "endDate:", endDate, "days:", days);
+    console.log("departure:", departure, "arrival:", arrival, "date:", date, "days:", days);
+    setOpenScheduleModal({
+      open: true,
+      date: date,
+      days: days
+    });
   };
 
   return (
@@ -222,6 +257,19 @@ const StartPlannerPage = () => {
           loading={showTransportModal.mode === "go" ? loadingGo : loadingReturn}
         />
       )}
+
+      <SimpleModal open={openSearchModal.open} onClose={() => setOpenSearchModal({ ...openSearchModal, open: false })}>
+        <SearchPage defaultDeparture={openSearchModal.departure} defaultArrival={openSearchModal.arrival} />
+      </SimpleModal>
+
+      <SimpleModal open={openScheduleModal.open} onClose={() => setOpenScheduleModal({ ...openScheduleModal, open: false })}>
+        <SchedulePage
+          defaultDeparture={selectedGoTransport?.departure || currentTransportData?.departure || "서울"}
+          defaultArrival={selectedGoTransport?.arrival || currentTransportData?.arrival || "부산"}
+          defaultDate={openScheduleModal.date}
+          defaultDays={openScheduleModal.days}
+        />
+      </SimpleModal>
     </PageWrapper>
   );
 };
