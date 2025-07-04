@@ -6,38 +6,23 @@ import MapComponent from "../components/map/ScheduleMapComponent";
 import { generateMultiDaySchedule } from "../api/scheduleApi";
 
 const Container = styled.div`
-  width: 100%;
-  max-width: 1200px;
-  min-height: 800px;
-  padding: 1rem;
+  width: 100vw;
+  height: 100vh;
+  padding: 1rem 2rem;
   background: #f9faff;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   display: flex;
-  flex-direction: column;
   box-sizing: border-box;
 `;
 
-const TopRow = styled.div`
-  display: flex;
-  gap: 2rem;
-  align-items: flex-start;
-`;
-
-const FormBox = styled.div`
+const LeftPane = styled.div`
   flex: 1;
-  min-width: 280px;
+  overflow-y: auto;
+  padding-right: 1rem;
 `;
 
-const MapBox = styled.div`
+const RightPane = styled.div`
   flex: 1;
-  min-width: 300px;
-  height: 410px;
-`;
-
-const ResultBox = styled.div`
-  margin-top: 2rem;
+  height: 100%;
 `;
 
 const Title = styled.h1`
@@ -53,12 +38,7 @@ const Message = styled.p`
   font-weight: ${(props) => (props.error ? "700" : "400")};
 `;
 
-const SchedulePage = ({
-  defaultDeparture = "서울",
-  defaultArrival = "부산",
-  defaultDate = "",
-  defaultDays = 1
-}) => {
+const SchedulePage = () => {
     const [schedule, setSchedule] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -89,32 +69,12 @@ const SchedulePage = ({
 
     return (
         <Container>
-            <Title>
-                <span role="img" aria-label="지구">🌏</span>
-                여행 일정 추천
-            </Title>
-            <TopRow>
-                <FormBox>
-                    <ScheduleForm
-                        onSubmit={handleGenerate}
-                        defaultDeparture={defaultDeparture}
-                        defaultArrival={defaultArrival}
-                        defaultDate={defaultDate}
-                        defaultDays={defaultDays}
-                    />
-                </FormBox>
-                <MapBox>
-                    <MapComponent
-                        dailyPlan={schedule?.dailyPlan || {}}
-                        selectedDate={selectedDate}
-                        selectedPlace={selectedPlace}
-                        onCloseInfo={() => setSelectedPlace(null)}
-                    />
-                </MapBox>
-            </TopRow>
-            <ResultBox>
+            <LeftPane>
+                <Title>여행 일정 추천</Title>
+                <ScheduleForm onSubmit={handleGenerate} />
                 {loading && <Message>⏳ 일정을 생성 중입니다...</Message>}
                 {error && <Message error>{error}</Message>}
+
                 {schedule && (
                     <>
                         <MultiDayScheduleResult
@@ -145,7 +105,15 @@ const SchedulePage = ({
                         </button>
                     </>
                 )}
-            </ResultBox>
+            </LeftPane>
+            <RightPane>
+                <MapComponent
+                    dailyPlan={schedule?.dailyPlan || {}}
+                    selectedDate={selectedDate}
+                    selectedPlace={selectedPlace}
+                    onCloseInfo={() => setSelectedPlace(null)}
+                />
+            </RightPane>
         </Container>
     );
 };

@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 const MapWrapper = styled.div`
   width: 100%;
-  height: 100%;
+  height: 500px;
   border-radius: 12px;
   overflow: hidden;
 `;

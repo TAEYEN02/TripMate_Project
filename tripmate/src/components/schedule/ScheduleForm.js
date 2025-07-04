@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 
 const Card = styled.div`
@@ -55,22 +55,11 @@ const Button = styled.button`
   }
 `;
 
-const ScheduleForm = ({
-  onSubmit,
-  defaultDeparture = "",
-  defaultArrival = "",
-  defaultDate = "",
-  defaultDays = 3
-}) => {
-  const [departure, setDeparture] = useState(defaultDeparture);
-  const [arrival, setArrival] = useState(defaultArrival);
-  const [date, setDate] = useState(defaultDate);
-  const [days, setDays] = useState(defaultDays);
-
-  useEffect(() => { setDeparture(defaultDeparture); }, [defaultDeparture]);
-  useEffect(() => { setArrival(defaultArrival); }, [defaultArrival]);
-  useEffect(() => { setDate(defaultDate); }, [defaultDate]);
-  useEffect(() => { setDays(defaultDays); }, [defaultDays]);
+const ScheduleForm = ({ onSubmit }) => {
+  const [departure, setDeparture] = useState("");
+  const [arrival, setArrival] = useState("");
+  const [date, setDate] = useState("");
+  const [days, setDays] = useState(3);
 
   const handleSubmit = (e) => {
     e.preventDefault();
