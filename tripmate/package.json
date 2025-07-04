@@ -10,6 +10,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
     "date-fns": "^2.29.3",
+    "dayjs": "^1.11.13",
     "framer-motion": "^12.20.1",
     "react": "^19.1.0",
     "react-beautiful-dnd": "^13.1.1",
