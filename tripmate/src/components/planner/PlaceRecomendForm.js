@@ -55,9 +55,9 @@ const Button = styled.button`
   }
 `;
 
-const ScheduleForm = ({ onSubmit }) => {
-  const [departure, setDeparture] = useState("");
-  const [arrival, setArrival] = useState("");
+const ScheduleForm = ({ onSubmit, defaultDeparture = "", defaultArrival = "" }) => {
+  const [departure, setDeparture] = useState(defaultDeparture);
+  const [arrival, setArrival] = useState(defaultArrival);
 
   const handleSubmit = (e) => {
     e.preventDefault();
