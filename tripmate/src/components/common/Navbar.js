@@ -1,30 +1,66 @@
-import { Link } from 'react-router-dom';
-import styled from 'styled-components';
+import React from "react";
+import { useNavigate, Link } from "react-router-dom";
+import styled from "styled-components";
+import { useAuth } from "../../context/AuthContext";
+import { Button } from "../common/StyledComponents";
 
 const Nav = styled.nav`
-  background-color: #2563eb; /* Tailwind의 bg-blue-600 */
-  color: white;
-  padding: 0.75rem 1rem; /* py-3 px-4 */
+  background-color: #fff;
+  padding: 1rem 2rem;
   display: flex;
-  gap: 1rem; /* space-x-4 */
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
 `;
 
-const StyledLink = styled(Link)`
-  color: white;
+const NavLink = styled(Link)`
+  color: #333;
   text-decoration: none;
-
+  font-size: 1.2rem;
+  font-weight: bold;
   &:hover {
-    text-decoration: underline;
+    color: #007bff;
   }
 `;
 
+const NavItems = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+`;
+
+const UserInfo = styled.span`
+  font-weight: bold;
+`;
+
 const Navbar = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <Nav>
-      <StyledLink to="/">일정 만들기</StyledLink>
-      <StyledLink to="/planner">여행지 추천</StyledLink>
-      <StyledLink to="/schedule">스케줄 추천</StyledLink>
-      <StyledLink to="/my-schedule">🙍‍♀️</StyledLink>
+      <NavLink to="/">TripMate</NavLink>
+      <NavItems>
+        {user ? (
+          <>
+            <UserInfo>{user.sub}님 환영합니다!</UserInfo>
+            <Link to="/my-schedule">내 일정</Link>
+            <Button onClick={handleLogout}>로그아웃</Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => navigate("/login")}>로그인</Button>
+            <Button onClick={() => navigate("/signup")} style={{ marginLeft: "10px" }}>
+              회원가입
+            </Button>
+          </>
+        )}
+      </NavItems>
     </Nav>
   );
 };
