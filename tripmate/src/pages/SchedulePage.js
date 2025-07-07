@@ -3,7 +3,7 @@ import styled from "styled-components";
 import ScheduleForm from "../components/schedule/ScheduleForm";
 import MultiDayScheduleResult from "../components/schedule/MultiDayScheduleResult";
 import MapComponent from "../components/map/ScheduleMapComponent";
-import { generateMultiDaySchedule } from "../api/scheduleApi";
+import { generateMultiSchedule } from "../api/scheduleApi";
 
 const Container = styled.div`
   width: 100%;
@@ -74,7 +74,7 @@ const SchedulePage = ({
         setSelectedDate(null);
 
         try {
-            const res = await generateMultiDaySchedule(formData);
+            const res = await generateMultiSchedule(formData);
             setSchedule(res.data);
 
             // 일정 생성 후 첫 날짜 자동 선택

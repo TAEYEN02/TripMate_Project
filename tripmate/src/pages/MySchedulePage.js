@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import SimpleModal from "../components/Modal/SimpleModal";
 import SearchPage from "./SearchPage";
 import SchedulePage from "./SchedulePage";
+import axios from 'axios';
 
 const PageContainer = styled.div`
   display: flex;

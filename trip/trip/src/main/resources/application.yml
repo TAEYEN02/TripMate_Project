@@ -8,10 +8,17 @@ kakao:
   api-key: 8f8539e18dbd6168eaf2123a48a02fa0
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
+    url: jdbc:mysql://localhost:3306/tripmate?useSSL=false&serverTimezone=Asia/Seoul
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 1234
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+app:
+  jwtSecret: your-super-long-secret-key-which-is-safe-and-over-64-bytes-long...
+  jwtExpirationInMs: 86400000
