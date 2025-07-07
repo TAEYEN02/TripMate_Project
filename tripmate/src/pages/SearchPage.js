@@ -2,7 +2,7 @@ import { useState } from "react";
 import styled from "styled-components";
 import ScheduleForm from "../components/planner/PlaceRecomendForm";
 import ScheduleResult from "../components/planner/ScheduleResult";
-import { generateSchedule } from "../api/scheduleApi";
+import { autoGenerateSchedule } from "../api/scheduleApi";
 import MapComponent from "../components/map/MapComponent";
 
 const Container = styled.div`
@@ -101,7 +101,7 @@ const PlannerPage = ({ defaultDeparture = "서울", defaultArrival = "부산" })
     setSelectedPlaceId(null);
 
     try {
-      const res = await generateSchedule(formData);
+      const res = await autoGenerateSchedule(formData);
       setSchedule(res.data);
     } catch (err) {
       setError("일정 생성 중 오류가 발생했습니다.");

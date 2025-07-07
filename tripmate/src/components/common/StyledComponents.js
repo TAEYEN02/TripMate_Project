@@ -1,76 +1,97 @@
 import styled from 'styled-components';
 
+//SignUp
 export const Wrapper = styled.div`
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: #f0f2f5;
+  background: #f9fafb;
 `;
 
 export const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: white;
+  background: white;
+  padding: 2rem 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 400px;
 `;
 
 export const Title = styled.h2`
-  margin-bottom: 20px;
-  font-size: 24px;
-  color: #333;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  color: #2563eb;
+`;
+
+export const InputGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+`;
+
+export const Label = styled.label`
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #374151;
 `;
 
 export const Input = styled.input`
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 16px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: #2563eb;
+    outline: none;
+  }
 `;
 
 export const Button = styled.button`
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 5px;
-  background-color: #007bff;
+  background: #2563eb;
   color: white;
-  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s;
+  width:400px;
 
   &:hover {
-    background-color: #0056b3;
-  }
-
-  &:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+    background: #1d4ed8;
   }
 `;
 
 export const ButtonWrap = styled.div`
-  width: 100%;
-  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
-export const Separator = styled.div`
-  height: 15px;
-  border-left: 1px solid #ccc;
-  margin: 0 10px;
+export const ErrorMessage = styled.p`
+  color: #dc2626;
+  text-align: center;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
 `;
 
-export const FindAccountLink = styled.a`
-  color: #007bff;
-  text-decoration: none;
+export const FindAccountLink = styled.button`
+  margin-top: 1.5rem;
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: underline;
 
   &:hover {
-    text-decoration: underline;
+    color: #1d4ed8;
   }
 `;
 
@@ -78,8 +99,15 @@ export const FindAccountWrap = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 20px;
+  gap: 1rem;
+  margin-top: 1.5rem;
 `;
+
+export const Separator = styled.span`
+  color: #9ca3af;
+  font-size: 0.9rem;
+`;
+
 
 // UserPage styles
 export const UserPageWrapper = styled.div`
@@ -213,3 +241,37 @@ export const UserReviews = styled.div`
     padding: 10px 0;
   }
 `;
+
+
+
+
+export const CityGridBlock = styled.div`
+      padding: 2rem;
+      background: #f8f9fa;
+    `;
+
+export const Grid = styled.div`
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+    `;
+
+export const CityItem = styled.div`
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+      color: white;
+      border-radius: 12px;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+   
+      &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+      }
+    `;

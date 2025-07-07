@@ -1,5 +1,7 @@
 package com.korea.trip.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -53,5 +55,16 @@ public class ScheduleService {
         entity.setPublic(false); // ✅ boolean 필드 setter는 setPublic
 
         scheduleRepository.save(entity);
+    }
+
+    public List<Schedule> getSharedSchedules() {
+        return scheduleRepository.findAllByIsPublicTrue();
+    }
+
+    public void updateSchedulePublicStatus(Long scheduleId, boolean isPublic) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+            .orElseThrow(() -> new RuntimeException("Schedule not found"));
+        schedule.setPublic(isPublic);
+        scheduleRepository.save(schedule);
     }
 }

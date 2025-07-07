@@ -2,6 +2,7 @@ package com.korea.trip.config;
 
 import com.korea.trip.service.CustomUserDetailsService;
 
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.*;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -51,9 +52,13 @@ public class SecurityConfig {
                 .authenticationEntryPoint(unauthorizedHandler).and()
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-            .authorizeHttpRequests()
-                .requestMatchers("/api/auth/**").permitAll() // 로그인/회원가입 허용
-                .anyRequest().authenticated();
+                .authorizeHttpRequests(authorize -> authorize
+                	    .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+                	    .requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
+                	    .requestMatchers("/api/auth/me").authenticated()
+                	    .requestMatchers("/api/users/**").permitAll()
+                	    .anyRequest().authenticated()
+            );
 
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 

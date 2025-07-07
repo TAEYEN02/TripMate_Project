@@ -1,50 +1,43 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import styled from 'styled-components';
-import Navbar from './components/common/Navbar';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Header from './components/common/Header';
+import Footer from './components/main/Footer';
+import MainPage from './pages/MainPage';
+import LoginPage from './pages/LoginPage';
+import SignUp from './pages/SignUp';
+//import Travel from './pages/Travel';
+import Mypage from './pages/Mypage'; // Mypage 컴포넌트 import
+import { AuthProvider } from './context/AuthContext';
+import StartPlanner from './pages/StartPlannerPage';
 import StartPlannerPage from './pages/StartPlannerPage';
 import PlannerPage from './pages/SearchPage';
 import SchedulePage from './pages/SchedulePage';
-import './App.css';
 import MySchedulePage from './pages/MySchedulePage';
-import LoginPage from './pages/LoginPage';
-import SignUp from './pages/SignUp';
-import MainPage from './pages/MainPage';
 import UserPage from './pages/UserPage';
-import { AuthProvider } from './context/AuthContext';
-
-// 앱 전체 컨테이너
-const AppContainer = styled.div`
-  min-height: 100vh;
-  background-color: #f7fafc;
-`;
-
-// 메인 콘텐츠 영역
-const MainContent = styled.main`
-  padding-top: 1rem;
-`;
+import SharedTripsPage from './pages/SharedTripsPage';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContainer>
-          <Navbar />
-          <MainContent>
-            <Routes>
-              <Route path="/startPlanner" element={<StartPlannerPage />} />
-              <Route path="/planner" element={<PlannerPage />} />
-              <Route path='/schedule' element={<SchedulePage />} />
-              <Route path='/my-schedule' element={<MySchedulePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/" element={<MainPage />} />
-              <Route path="/user/:user_id" element={<UserPage />} />
-            </Routes>
-          </MainContent>
-        </AppContainer>
-      </Router>
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <Header />
+        <main>
+          <Routes>
+            <Route path="/startPlanner" element={<StartPlannerPage />} />
+            <Route path="/planner" element={<PlannerPage />} />
+            <Route path='/schedule' element={<SchedulePage />} />
+            <Route path='/my-schedule' element={<MySchedulePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/" element={<MainPage />} />
+            <Route path="/user/:userId" element={<UserPage />} /> {/* UserPage 경로 수정 */}
+            <Route path="/mypage" element={<Mypage />} />
+            <Route path='/travel' element={<SharedTripsPage/>}/>
+          </Routes>
+        </main>
+        <Footer />
+      </AuthProvider>
+    </Router>
   );
 }
 

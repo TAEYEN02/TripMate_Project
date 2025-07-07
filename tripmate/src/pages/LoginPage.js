@@ -9,9 +9,12 @@ import {
   Input,
   Button,
   ButtonWrap,
-  Separator,
+  InputGroup,
+  Label,
+  ErrorMessage,
   FindAccountLink,
   FindAccountWrap,
+  Separator,
 } from "../components/common/StyledComponents";
 
 const Login = () => {
@@ -29,7 +32,7 @@ const Login = () => {
     e.preventDefault();
 
     if (lockUntil && new Date() < lockUntil) {
-      setErrorMsg(`로그인 3회 실패: ${Math.ceil((lockUntil - new Date()) / 1000 / 60)}분 뒤에 다시 시도하세요.`);
+      setErrorMsg('로그인 3회 실패');
       return;
     }
 
@@ -40,22 +43,14 @@ const Login = () => {
 
     try {
       const response = await apiLogin(loginData);
-      login(response.accessToken); // Update context with the token
+      login(response.accessToken, response.user);
       setErrorMsg("");
       setFailCount(0);
       setLockUntil(null);
-      navigate("/"); // Redirect to main page
+      navigate("/");
     } catch (error) {
       const newFailCount = failCount + 1;
       setFailCount(newFailCount);
-
-      if (newFailCount >= 3) {
-        const lockTime = new Date(new Date().getTime() + 10 * 60 * 1000);
-        setLockUntil(lockTime);
-        setErrorMsg("로그인 3회 실패: 10분 뒤에 다시 시도하세요.");
-      } else {
-        setErrorMsg(`로그인에 실패했습니다. (${newFailCount}회 실패)`);
-      }
     }
   };
 
@@ -84,31 +79,35 @@ const Login = () => {
     <Wrapper>
       <Form onSubmit={handleLogin}>
         <Title>로그인</Title>
-        <div>
-          <p>
-            <Input
-              type="text"
-              name="userId"
-              placeholder="아이디를 입력해주세요."
-              value={loginData.userId}
-              onChange={handleChange}
-              disabled={isLocked}
-            />
-          </p>
-          <p>
-            <Input
-              type="password"
-              name="password"
-              placeholder="비밀번호를 입력해주세요."
-              value={loginData.password}
-              onChange={handleChange}
-              disabled={isLocked}
-            />
-          </p>
-        </div>
-        {errorMsg && (
-          <p style={{ color: "red", marginBottom: "10px" }}>{errorMsg}</p>
-        )}
+
+        <InputGroup>
+          <Label htmlFor="userId">아이디</Label>
+          <Input
+            type="text"
+            id="userId"
+            name="userId"
+            placeholder="아이디를 입력해주세요."
+            value={loginData.userId}
+            onChange={handleChange}
+            disabled={isLocked}
+          />
+        </InputGroup>
+
+        <InputGroup>
+          <Label htmlFor="password">비밀번호</Label>
+          <Input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="비밀번호를 입력해주세요."
+            value={loginData.password}
+            onChange={handleChange}
+            disabled={isLocked}
+          />
+        </InputGroup>
+
+        {errorMsg && <ErrorMessage>{errorMsg}</ErrorMessage>}
+
         <ButtonWrap>
           <Button type="submit" disabled={isLocked}>
             로그인
@@ -121,6 +120,7 @@ const Login = () => {
             회원가입
           </Button>
         </ButtonWrap>
+
         <FindAccountWrap>
           <FindAccountLink href="/find_my/id">아이디 찾기</FindAccountLink>
           <Separator />

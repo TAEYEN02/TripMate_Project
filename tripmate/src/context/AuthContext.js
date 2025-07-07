@@ -21,10 +21,11 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = (token) => {
+  const login = (token, userData) => {
     const decoded = jwtDecode(token);
     localStorage.setItem("token", token);
-    setUser({ token, ...decoded });
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser({ token, ...decoded, ...userData });
   };
 
   const logout = () => {
@@ -32,8 +33,15 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+ const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+};
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, getAuthHeaders }}>
       {children}
     </AuthContext.Provider>
   );

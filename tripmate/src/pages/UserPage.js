@@ -1,160 +1,103 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { PostContext } from "../context/PostContext";
-import {
-  UserPageWrapper,
-  InfoWrapper,
-  Profile,
-  ProfileImg,
-  UserInfo,
-  UserTabs,
-  TabContent,
-  UserSchedule,
-  PostItem,
-  UserInfoTab,
-  UserReviews,
-} from "../components/common/StyledComponents";
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import styled from 'styled-components';
+import api from '../api'; // axios 인스턴스 import
+import { useAuth } from '../context/AuthContext';
 
-export default function User_Page() {
-  const { user_id } = useParams();
-  const navigate = useNavigate();
-  const { user: authUser } = useAuth();
-  const { posts, users, contents, categories, loading } =
-    useContext(PostContext);
+const UserPageContainer = styled.div`
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+`;
 
-  const [activeTab, setActiveTab] = useState("schedule");
-  const [myInfo, setMyInfo] = useState(false);
+const UserProfile = styled.div`
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+`;
 
-  const user_info = users.find((u) => u.user_id === Number(user_id));
-  const user_posts = posts.filter((p) => p.writer_id === Number(user_id));
+const ProfileImage = styled.img`
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    margin-right: 2rem;
+    object-fit: cover;
+`;
 
-  useEffect(() => {
-    if (!loading && authUser)
-      setMyInfo(authUser.id === Number(user_id));
-  }, [loading, authUser, user_id]);
+const UserInfo = styled.div`
+    h1 {
+        font-size: 2rem;
+        margin: 0;
+    }
+    p {
+        font-size: 1.1rem;
+        color: #6c757d;
+    }
+`;
 
-  const handleNewPost = () => navigate("/create_post");
-  const handlePostClick = (id) => navigate(`/post/${id}`);
+const UserContent = styled.div`
+    /* 추가적인 사용자 컨텐츠 (예: 작성한 글 목록) 스타일 */
+`;
 
-  if (loading) return <div>Loading...</div>;
-  if (!user_info) return <div>사용자를 찾을 수 없습니다.</div>;
+function UserPage() {
+    const { userId } = useParams(); // URL에서 userId 파라미터 가져오기
+    const [userProfile, setUserProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const { user: loggedInUser } = useAuth(); // 현재 로그인한 사용자 정보
 
-  return (
-    <>
-      <UserPageWrapper>
-        <InfoWrapper>
-          <Profile>
-            <ProfileImg>
-              <img src="/img/image.png" alt="프로필" />
-            </ProfileImg>
-            <UserInfo>
-              <div className="info_name">{user_info.name}</div>
-              <div className="info_postnum">게시물 {user_posts.length}</div>
-              <div className="info_intro">{user_info.intro}</div>
-              {myInfo && (
-                <button
-                  className="setting_bt"
-                  onClick={() => navigate("/settings")}
-                >
-                  <img src="/img/설정.png" alt="설정" />
-                </button>
-              )}
-            </UserInfo>
-          </Profile>
-        </InfoWrapper>
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                setLoading(true);
+                const response = await api.get(`/users/${userId}`);
+                setUserProfile(response.data);
+                setError(null);
+            } catch (err) {
+                setError('사용자 정보를 불러오는데 실패했습니다.');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        <UserTabs>
-          {["schedule", "info", "review"].map((tab) => (
-            <button
-              key={tab}
-              className={activeTab === tab ? "active" : ""}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab === "schedule"
-                ? "내 일정"
-                : tab === "info"
-                ? "내 정보"
-                : "내 리뷰"}
-            </button>
-          ))}
-        </UserTabs>
+        fetchUserProfile();
+    }, [userId]);
 
-        <TabContent>
-          {activeTab === "schedule" && (
-            <UserSchedule>
-              {myInfo && (
-                <button className="new_post_bt" onClick={handleNewPost}>
-                  <img src="/img/글쓰기.png" alt="새 글쓰기" />
-                </button>
-              )}
-              {!user_posts.length && <p>일정이 없습니다.</p>}
-              {user_posts.map((p) => (
-                <PostItem
-                  key={p.post_id}
-                  onClick={() => handlePostClick(p.post_id)}
-                >
-                  <p className="post_title">{p.title}</p>
-                  <div className="post_images">
-                    {contents
-                      .filter((c) => c._post_id === p.post_id)
-                      .slice(0, 4)
-                      .map((c, idx) => (
-                        <img key={idx} src={c.img_src} alt="" />
-                      ))}
-                  </div>
-                  <div className="post_categories">
-                    {categories
-                      .filter((cat) => cat.post_id === p.post_id)
-                      .map((cat, idx) => (
-                        <span key={idx} className="post_category">
-                          #{cat.category_name}
-                        </span>
-                      ))}
-                  </div>
-                </PostItem>
-              ))}
-            </UserSchedule>
-          )}
+    if (loading) return <p>로딩 중...</p>;
+    if (error) return <p>{error}</p>;
+    if (!userProfile) return <p>사용자 정보를 찾을 수 없습니다.</p>;
 
-          {activeTab === "info" && (
-            <UserInfoTab>
-              <p>
-                <strong>이름:</strong> {user_info.name}
-              </p>
-              <p>
-                <strong>아이디:</strong>{" "}
-                {user_info.username || user_info.user_id}
-              </p>
-              <p>
-                <strong>소개:</strong> {user_info.intro || "소개가 없습니다."}
-              </p>
-              <p>
-                <strong>이메일:</strong>{" "}
-                {user_info.email || "등록된 이메일이 없습니다."}
-              </p>
-            </UserInfoTab>
-          )}
+    // 현재 로그인한 사용자와 페이지의 주인이 같은지 확인
+    const isOwner = loggedInUser && loggedInUser.userId === userProfile.userId;
 
-          {activeTab === "review" && (
-            <UserReviews>
-              {!user_posts.length ? (
-                <p>작성한 리뷰가 없습니다.</p>
-              ) : (
-                user_posts.map((p) => (
-                  <div key={p.post_id} className="review_item">
-                    <p>
-                      <strong>{p.title}</strong>
-                    </p>
-                    {/* 리뷰 내용은 따로 API 필요 */}
-                  </div>
-                ))
-              )}
-            </UserReviews>
-          )}
-        </TabContent>
-      </UserPageWrapper>
-    </>
-  );
+    return (
+        <UserPageContainer>
+            <UserProfile>
+                {/* 임시 프로필 이미지 */}
+                <ProfileImage src={`https://i.pravatar.cc/150?u=${userProfile.userId}`} alt="Profile" />
+                <UserInfo>
+                    <h1>{userProfile.username}</h1>
+                    <p>@{userProfile.userId}</p>
+                    <p>{userProfile.email}</p>
+                </UserInfo>
+            </UserProfile>
+
+            {isOwner && (
+                <div>
+                    {/* 마이페이지와 동일한 로그아웃, 회원탈퇴 버튼 등을 여기에 추가할 수 있습니다. */}
+                    {/* 예: <Link to="/settings">프로필 수정</Link> */}
+                </div>
+            )}
+
+            <UserContent>
+                <h2>작성한 여행 계획</h2>
+                {/* 사용자가 작성한 여행 계획 목록 등을 여기에 렌더링 */}
+            </UserContent>
+        </UserPageContainer>
+    );
 }
 
+export default UserPage;

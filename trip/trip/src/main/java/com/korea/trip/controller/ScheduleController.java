@@ -1,9 +1,11 @@
-// ScheduleController.java
 package com.korea.trip.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,13 +14,17 @@ import com.korea.trip.dto.MultiDayScheduleResponse;
 import com.korea.trip.dto.ScheduleCreateRequest;
 import com.korea.trip.dto.ScheduleRequest;
 import com.korea.trip.dto.ScheduleResponse;
+import com.korea.trip.models.Schedule;
 import com.korea.trip.models.UserPrincipal;
 import com.korea.trip.security.CurrentUser;
 import com.korea.trip.service.ScheduleService;
 import com.korea.trip.util.GenerateItinerary;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
-@RequestMapping("/schedule")
+@RequestMapping("/api/schedule")
 @CrossOrigin(origins = "http://localhost:3000") 
 public class ScheduleController {
 
@@ -64,4 +70,19 @@ public class ScheduleController {
     }
     
     
+    @GetMapping("/shared")
+    public ResponseEntity<List<Schedule>> getSharedSchedules() {
+        List<Schedule> sharedSchedules = scheduleService.getSharedSchedules();
+        return ResponseEntity.ok(sharedSchedules);
+    }
+
+    @PutMapping("/{scheduleId}/share")
+    public ResponseEntity<?> updateSchedulePublicStatus(@PathVariable Long scheduleId, @RequestBody Map<String, Boolean> payload) {
+        try {
+            scheduleService.updateSchedulePublicStatus(scheduleId, payload.get("isPublic"));
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

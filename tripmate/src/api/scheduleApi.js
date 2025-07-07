@@ -1,16 +1,23 @@
-import axios from "axios";
+import api from "./index";
 
-const BASE_URL = "http://localhost:10000"; // 백엔드 서버 주소
-
-export const generateSchedule = async ({ departure, arrival, date, transportType }) => {
-  return axios.post(`${BASE_URL}/schedule/auto-generate`, {
+// 단일 일정 자동 생성
+export const autoGenerateSchedule = async ({ departure, arrival, date, transportType }) => {
+  const response = await api.post("/schedule/auto-generate", {
     departure,
     arrival,
     date,
     transportType
   });
+  return response.data; // ScheduleResponse
 };
 
-export const generateMultiDaySchedule = (data) => {
-  return axios.post("http://localhost:10000/schedule/generate-multi", data);
+// 다일정 자동 생성
+export const generateMultiSchedule = async ({ departure, arrival, date, days }) => {
+  const response = await api.post("/api/schedule/generate-multi", {
+    departure,
+    arrival,
+    date,
+    days
+  });
+  return response.data; // MultiDayScheduleResponse
 };

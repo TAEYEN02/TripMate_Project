@@ -4,7 +4,11 @@ export const login = async (credentials) => {
   const response = await api.post("/auth/login", credentials);
   const { accessToken } = response.data;
   localStorage.setItem("token", accessToken);
-  return response.data;
+
+  const meResponse = await api.get("/auth/me"); 
+  localStorage.setItem("user", JSON.stringify(meResponse.data));
+
+  return { ...response.data, user: meResponse.data };
 };
 
 export const signup = async (userData) => {
@@ -13,5 +17,9 @@ export const signup = async (userData) => {
 
 export const logout = () => {
   localStorage.removeItem("token");
-  // Optionally, you could also make an API call to a /logout endpoint if the backend supports it.
+  localStorage.removeItem("user");
+};
+
+export const getMe = async () => {
+  return await api.get("/auth/me");
 };
