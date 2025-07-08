@@ -56,8 +56,9 @@ public class SecurityConfig {
                 	    .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                 	    .requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
                 	    .requestMatchers("/api/auth/me").authenticated()
-                	    .requestMatchers("/api/users/**").permitAll()
-                	    .anyRequest().authenticated()
+                	    .requestMatchers("/api/users/**").authenticated()
+                	    .requestMatchers("/api/schedule/**").authenticated()
+                	    .anyRequest().permitAll()
             );
 
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);

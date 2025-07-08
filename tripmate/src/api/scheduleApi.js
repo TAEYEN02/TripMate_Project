@@ -13,7 +13,7 @@ export const autoGenerateSchedule = async ({ departure, arrival, date, transport
 
 // 다일정 자동 생성
 export const generateMultiSchedule = async ({ departure, arrival, date, days }) => {
-  const response = await api.post("/api/schedule/generate-multi", {
+  const response = await api.post("/schedule/generate-multi", {
     departure,
     arrival,
     date,

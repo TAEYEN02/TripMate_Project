@@ -7,13 +7,13 @@ import LoginPage from './pages/LoginPage';
 import SignUp from './pages/SignUp';
 //import Travel from './pages/Travel';
 import Mypage from './pages/Mypage'; // Mypage 컴포넌트 import
+import ScheduleDetail from './pages/ScheduleDetail'; // ScheduleDetail 컴포넌트 import
 import { AuthProvider } from './context/AuthContext';
 import StartPlanner from './pages/StartPlannerPage';
 import StartPlannerPage from './pages/StartPlannerPage';
 import PlannerPage from './pages/SearchPage';
 import SchedulePage from './pages/SchedulePage';
 import MySchedulePage from './pages/MySchedulePage';
-import UserPage from './pages/UserPage';
 import SharedTripsPage from './pages/SharedTripsPage';
 
 function App() {
@@ -30,8 +30,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/" element={<MainPage />} />
-            <Route path="/user/:userId" element={<UserPage />} /> {/* UserPage 경로 수정 */}
-            <Route path="/mypage" element={<Mypage />} />
+            <Route path="/user/:userId" element={<Mypage />} />
+            <Route path="/schedule/:id" element={<ScheduleDetail />} /> 
             <Route path='/travel' element={<SharedTripsPage/>}/>
           </Routes>
         </main>

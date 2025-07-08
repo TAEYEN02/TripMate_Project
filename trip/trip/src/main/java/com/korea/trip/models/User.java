@@ -12,6 +12,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "users")
@@ -34,10 +35,13 @@ public class User {
 	@Column(unique = true)
 	private String email;
 
+	
 	// 연관관계
+	@JsonIgnore
 	@OneToMany(mappedBy = "user")
 	private List<Schedule> schedules = new ArrayList<>();
 
+	@JsonIgnore
 	@OneToMany(mappedBy = "user")
 	private List<Review> reviews = new ArrayList<>();
 

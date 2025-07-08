@@ -52,7 +52,7 @@ function Header() {
                 <Link to="/travel">여행지</Link>
                 {user ? (
                     <>
-                     <Link to="#" onClick={handleLogout}>로그아웃</Link>
+                     <Link to="/" onClick={handleLogout}>로그아웃</Link>
                     <Link to={`/user/${user.userId}`}>마이페이지</Link>
                     <Link to={'/my-schedule'}>내 일정</Link>
                     </>

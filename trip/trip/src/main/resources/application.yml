@@ -19,6 +19,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+       add-mappings: true
 app:
-  jwtSecret: your-super-long-secret-key-which-is-safe-and-over-64-bytes-long...
+  jwtSecret: "z1X9F4pLq2NhB8vY7Wq3ReXs9Kw6MfDr7LpCvWxZSaGhJiUkLmNOpQrStUvWxYz1"
   jwtExpirationInMs: 86400000
