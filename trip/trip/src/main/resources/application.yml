@@ -21,4 +21,4 @@ spring:
         format_sql: true
 app:
   jwtSecret: your-super-long-secret-key-which-is-safe-and-over-64-bytes-long...
-  jwtExpirationInMs: 86400000
+  jwtExpirationInMs: 86400000 

@@ -22,7 +22,7 @@ public class JwtTokenProvider {
     private final SecretKey key;
     private final long jwtExpirationInMs;
 
-    public JwtTokenProvider(@Value("${app.jwtSecret}") String jwtSecret, @Value("${app.jwtExpirationInMs}") int jwtExpirationInMs) {
+    public JwtTokenProvider(@Value("${app.jwtSecret}") String jwtSecret, @Value("${app.jwtExpirationInMs}") long jwtExpirationInMs) {
         this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
         this.jwtExpirationInMs = jwtExpirationInMs;
     }
