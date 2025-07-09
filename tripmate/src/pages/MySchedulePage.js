@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useLocation, useNavigate } from "react-router-dom"; // Added useNavigate
 import MapComponent from "../components/map/ScheduleMapComponent";
 import PlaceSearchBar from "../components/schedule/PlaceSearchBar";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 // import { motion } from "framer-motion";
 import { FaArrowDown } from "react-icons/fa";
 import dayjs from "dayjs";
@@ -217,16 +217,34 @@ const MySchedulePage = () => {
             return;
         }
 
-        // 기존 스케줄 정보는 유지하면서 dailyPlan만 교체
+        // 기존 dailyPlan 복사
+        const mergedDailyPlan = { ...schedule.dailyPlan };
+
+        // 추천 일정의 각 날짜별로 place를 합침
+        Object.entries(recommendedSchedule.dailyPlan).forEach(([date, places]) => {
+            if (!mergedDailyPlan[date]) {
+                // 기존에 없는 날짜면 새로 추가
+                mergedDailyPlan[date] = [];
+            }
+            // id 보장해서 추가
+            mergedDailyPlan[date] = [
+                ...mergedDailyPlan[date],
+                ...places.map(p => ({
+                    ...p,
+                    id: p.id || uuidv4(),
+                }))
+            ];
+        });
+
         const updatedSchedule = {
             ...schedule,
-            dailyPlan: recommendedSchedule.dailyPlan,
-            places: Object.values(recommendedSchedule.dailyPlan).flat(), // places 목록도 새것으로 업데이트
+            dailyPlan: mergedDailyPlan,
+            places: Object.values(mergedDailyPlan).flat(),
         };
 
         setSchedule(updatedSchedule);
-        localStorage.setItem("mySchedule", JSON.stringify(updatedSchedule)); // localStorage도 업데이트
-        setOpenScheduleModal(false); // 모달 닫기
+        localStorage.setItem("mySchedule", JSON.stringify(updatedSchedule));
+        setOpenScheduleModal(false);
     };
 
     // 4자리 숫자(0630) → 06:30 변환 함수
@@ -496,13 +514,26 @@ const MySchedulePage = () => {
                     <>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h2>내 일정</h2>
-                            <CreateScheduleButton
-                                bg="#2563eb"
-                                $hover="#1e40af"
-                                onClick={handleSaveSchedule}
-                            >
-                                ✨ 일정 저장하고 상세 보기
-                            </CreateScheduleButton>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                                <button
+                                    style={{ marginLeft: 0, padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                                    onClick={() => setOpenSearchModal(true)}
+                                >
+                                    여행지 추천
+                                </button>
+                                <button
+                                    style={{ marginLeft: 8, padding: "8px 16px", borderRadius: 8, background: "#10b981", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                                    onClick={() => setOpenScheduleModal(true)}
+                                >
+                                    스케줄 추천
+                                </button>
+                                <CreateScheduleButton
+                                    style={{ marginLeft: 8, padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                                    onClick={handleSaveSchedule}
+                                >
+                                    ✨ 일정 저장하고 상세 보기
+                                </CreateScheduleButton>
+                            </div>
                         </div>
                         {/* 교통편 정보 표시 */}
                         {transportInfo && (
@@ -557,7 +588,7 @@ const MySchedulePage = () => {
                             </TransportDetail>
                         </TransportInfo>
 
-                        {/* 여행 날짜 선택 버튼 + 추천 버튼 */}
+                        {/* 여행 날짜 선택 바만 표시 (버튼 없음) */}
                         <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
                             <DateSelector>
                                 <NavigationButton onClick={() => moveDate("prev")}>{"<"}</NavigationButton>
@@ -575,18 +606,6 @@ const MySchedulePage = () => {
                                 ))}
                                 <NavigationButton onClick={() => moveDate("next")}>{">"}</NavigationButton>
                             </DateSelector>
-                            <button
-                                style={{ marginLeft: 16, padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
-                                onClick={() => setOpenSearchModal(true)}
-                            >
-                                여행지 추천
-                            </button>
-                            <button
-                                style={{ marginLeft: 8, padding: "8px 16px", borderRadius: 8, background: "#10b981", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
-                                onClick={() => setOpenScheduleModal(true)}
-                            >
-                                스케줄 추천
-                            </button>
                         </div>
 
                         {schedule && selectedDate && (
