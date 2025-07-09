@@ -20,23 +20,29 @@ const contentStyle = {
     overflowY: "auto"
 };
 
+const closeBtnStyle = {
+  position: "absolute",
+  top: 18,
+  right: 24,
+  background: "none",
+  border: "none",
+  fontSize: "28px",
+  color: "#444",
+  cursor: "pointer",
+  zIndex: 10
+};
+
 const SimpleModal = ({ open, onClose, children }) => {
     if (!open) return null;
     return (
         <div style={modalStyle} onClick={onClose}>
-            <div style={contentStyle} onClick={e => e.stopPropagation()}>
+            <div style={{...contentStyle, position: 'relative'}} onClick={e => e.stopPropagation()}>
                 <button
-                    style={{
-                        float: "right",
-                        background: "none",
-                        border: "none",
-                        fontSize: "1.5rem",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        color: "#555"
-                    }}
-                    aria-label="닫기"
+                    style={closeBtnStyle}
                     onClick={onClose}
+                    onMouseOver={e => e.currentTarget.style.color = '#222'}
+                    onMouseOut={e => e.currentTarget.style.color = '#444'}
+                    aria-label="닫기"
                 >
                     <FiX />
                 </button>

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -171,9 +172,22 @@ public class ScheduleService {
 
 	// 새로운 여행지 추천 서비스 메서드
 	public List<PlaceDTO> getRecommendedPlaces(String keyword) {
-		// KakaoPlaceUtil을 사용하여 키워드에 맞는 장소들을 검색합니다.
-		// 여기서는 특정 카테고리 필터 없이 일반 검색을 수행합니다.
-		return kakaoPlaceUtil.searchPlaces(keyword, null);
+		System.out.println("getRecommendedPlaces 호출: " + keyword);
+		List<PlaceDTO> result = new ArrayList<>();
+		result.addAll(kakaoPlaceUtil.searchPlaces(keyword, null)); // 관광지/명소
+		System.out.println("관광지 호출 완료");
+		result.addAll(kakaoPlaceUtil.searchPlaces(keyword, "FD6")); // 음식점
+		System.out.println("음식점 호출 완료");
+		result.addAll(kakaoPlaceUtil.searchPlaces(keyword, "CE7")); // 카페
+		System.out.println("카페 호출 완료");
+		result.addAll(kakaoPlaceUtil.searchPlaces(keyword, "AD5")); // 숙박
+		System.out.println("숙박 호출 완료");
+		return result;
+	}
+
+	public List<PlaceDTO> getRecommendedPlacesByCategory(String keyword, String category) {
+		System.out.println("getRecommendedPlacesByCategory 호출: " + keyword + ", " + category);
+		return kakaoPlaceUtil.searchPlaces(keyword, category);
 	}
 
 	public ScheduleDTO createSchedule(ScheduleCreateRequest request, Long userId) {

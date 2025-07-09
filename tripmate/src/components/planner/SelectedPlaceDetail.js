@@ -82,7 +82,7 @@ const PlaceDetailModal = ({ place, onClose }) => {
           <Input value={place.address} readOnly />
         </Field>
 
-        {place.photoUrl && <Image src={place.photoUrl} alt={place.name} />}
+        {place.photoUrl && <Image src={place.photoUrl} alt={place.name} onError={e => e.target.src = '/icons/tourist.png'} />}
       </ModalBox>
     </Overlay>
   );

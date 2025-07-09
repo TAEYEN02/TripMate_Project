@@ -29,29 +29,33 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
-  padding: 0.6rem 0.8rem;
-  border: 1.8px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
+  padding: 0.8rem 1.2rem;
+  border: 2px solid #b2dfdb;
+  border-radius: 8px;
+  font-size: 1.13rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  transition: border-color 0.3s;
   &:focus {
     outline: none;
-    border-color: #0077ff;
+    border-color: #4caf50;
   }
 `;
 
 const Button = styled.button`
-  padding: 0.75rem;
-  background-color: #0077ff;
+  padding: 0.8rem;
+  background-color: #4caf50;
   color: white;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.13rem;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.25s ease;
+  width: 100%;
+  margin-top: 0.5rem;
+  transition: background-color 0.22s;
   &:hover {
-    background-color: #005fcc;
+    background-color: #388e3c;
   }
 `;
 
