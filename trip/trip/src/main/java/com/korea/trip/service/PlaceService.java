@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.korea.trip.dto.PlaceDto;
+import com.korea.trip.dto.PlaceDTO;
 import com.korea.trip.dto.place.PlaceResponse;
 import com.korea.trip.dto.place.PlaceSearchRequest;
 import com.korea.trip.models.Place;
@@ -33,7 +33,7 @@ public class PlaceService {
 		return filteredPlaces.stream().map(this::convertToResponse).collect(Collectors.toList());
 	}
 
-	public List<PlaceDto> searchPlaces(String keyword, String categoryFilter) {
+	public List<PlaceDTO> searchPlaces(String keyword, String categoryFilter) {
 		return kakaoPlaceUtil.searchPlaces(keyword, categoryFilter);
 	}
 	

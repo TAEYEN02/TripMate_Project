@@ -7,5 +7,5 @@ import lombok.Data;
 @Data
 public class DayPlan {
     private String date;
-    private List<PlaceDto> places;
+    private List<PlaceDTO> places;
 }

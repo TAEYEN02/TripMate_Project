@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class MultiDayScheduleResponse {
 	private String title;
-	private Map<String, List<PlaceDto>> dailyPlan; // 날짜별 장소 리스트
+	private Map<String, List<PlaceDTO>> dailyPlan; // 날짜별 장소 리스트
 }

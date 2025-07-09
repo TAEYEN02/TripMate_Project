@@ -60,7 +60,7 @@ const ScheduleForm = ({
   defaultDeparture = "",
   defaultArrival = "",
   defaultDate = "",
-  defaultDays = 3
+  defaultDays = 3,
 }) => {
   const [departure, setDeparture] = useState(defaultDeparture);
   const [arrival, setArrival] = useState(defaultArrival);
@@ -118,7 +118,7 @@ const ScheduleForm = ({
             min="1"
             max="10"
             value={days}
-            onChange={(e) => setDays(parseInt(e.target.value))}
+            onChange={(e) => setDays(parseInt(e.target.value) || 1)}
           />
         </FormGroup>
 

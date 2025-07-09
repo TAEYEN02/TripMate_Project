@@ -10,7 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.korea.trip.dto.PlaceDto;
+import com.korea.trip.dto.PlaceDTO;
 
 @Component
 public class KakaoPlaceUtil {
@@ -20,7 +20,7 @@ public class KakaoPlaceUtil {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public List<PlaceDto> searchRecommendedPlaces(String keyword) {
+    public List<PlaceDTO> searchRecommendedPlaces(String keyword) {
         String url = "https://dapi.kakao.com/v2/local/search/keyword.json?query=" + keyword + "&size=15";
 
         HttpHeaders headers = new HttpHeaders();
@@ -29,12 +29,12 @@ public class KakaoPlaceUtil {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        List<PlaceDto> result = new ArrayList<>();
+        List<PlaceDTO> result = new ArrayList<>();
         try {
             JsonNode docs = new ObjectMapper().readTree(response.getBody()).get("documents");
 
             for (JsonNode doc : docs) {
-                PlaceDto place = new PlaceDto();
+            	PlaceDTO place = new PlaceDTO();
                 place.setName(doc.get("place_name").asText());
                 place.setAddress(doc.get("address_name").asText());
                 place.setCategory(doc.get("category_name").asText());
@@ -51,7 +51,7 @@ public class KakaoPlaceUtil {
         return result;
     }
 
-    public List<PlaceDto> searchPlaces(String keyword, String categoryFilter) {
+    public List<PlaceDTO> searchPlaces(String keyword, String categoryFilter) {
         String query = keyword;
         if (categoryFilter != null && !categoryFilter.isEmpty()) {
             switch (categoryFilter) {
@@ -72,7 +72,7 @@ public class KakaoPlaceUtil {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        List<PlaceDto> result = new ArrayList<>();
+        List<PlaceDTO> result = new ArrayList<>();
         try {
             JsonNode docs = new ObjectMapper().readTree(response.getBody()).get("documents");
 
@@ -81,7 +81,7 @@ public class KakaoPlaceUtil {
 
                 if (categoryFilter != null && !category.equals(categoryFilter)) continue;
 
-                PlaceDto place = new PlaceDto();
+                PlaceDTO place = new PlaceDTO();
                 place.setName(doc.get("place_name").asText());
                 place.setAddress(doc.get("address_name").asText());
                 place.setCategory(doc.get("category_name").asText());

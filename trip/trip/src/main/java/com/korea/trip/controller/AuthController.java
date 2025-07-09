@@ -6,9 +6,14 @@ import com.korea.trip.dto.LoginRequest;
 import com.korea.trip.dto.SignUpRequest;
 import com.korea.trip.dto.api.ApiResponse;
 import com.korea.trip.models.User;
+import com.korea.trip.models.UserPrincipal;
 import com.korea.trip.repositories.UserRepository;
+import com.korea.trip.security.CurrentUser;
 
 import jakarta.validation.Valid;
+
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.authentication.*;
@@ -56,6 +61,9 @@ public class AuthController {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "Email is already in use!"));
         }
+        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Username is already taken!"));
+        }
 
         User user = new User(
                 signUpRequest.getUserId(),
@@ -84,11 +92,47 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
 
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증 정보가 없습니다.");
+        }
+
+        String userId = authentication.getName();
         User user = userRepository.findByUserId(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         return ResponseEntity.ok(user);
+    }
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@CurrentUser UserPrincipal currentUser,
+                                           @RequestBody Map<String, String> updateData) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String newUsername = updateData.get("username");
+        String newEmail = updateData.get("email");
+        String newPassword = updateData.get("password");
+
+        // 중복체크 (username)
+        if (newUsername != null && !newUsername.equals(user.getUsername())
+            && userRepository.existsByUsername(newUsername)) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Username is already taken!"));
+        }
+
+        // 중복체크 (email)
+        if (newEmail != null && !newEmail.equals(user.getEmail())
+            && userRepository.existsByEmail(newEmail)) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Email is already in use!"));
+        }
+
+        if (newUsername != null) user.setUsername(newUsername);
+        if (newEmail != null) user.setEmail(newEmail);
+        if (newPassword != null && !newPassword.isEmpty()) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+        }
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new ApiResponse(true, "Profile updated successfully"));
     }
 }
