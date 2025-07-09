@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/index';
 import { useNavigate } from 'react-router-dom'; // useNavigate 추가
 import styled from 'styled-components'; // styled-components 추가
+import dayjs from 'dayjs'; // dayjs 추가
 
 const SharedTripsContainer = styled.div`
     max-width: 1200px;
@@ -142,15 +143,16 @@ function SharedTripsPage() {
                     {schedules.map((schedule) => (
                         <ScheduleCard key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}`)}>
                             <ScheduleTitle>{schedule.title || '제목 없음'}</ScheduleTitle>
-                            <ScheduleMeta>날짜: {schedule.date}</ScheduleMeta>
+                            <ScheduleMeta>기간: {schedule.startDate ? dayjs(schedule.startDate).format('YYYY.MM.DD') : '날짜 정보 없음'} ~ {schedule.endDate ? dayjs(schedule.endDate).format('YYYY.MM.DD') : '날짜 정보 없음'}</ScheduleMeta>
                             <ScheduleDescription>{schedule.description || '설명 없음'}</ScheduleDescription>
-                            {schedule.places && (
+                            {schedule.places && schedule.places.length > 0 && (
                                 <SchedulePlaces>
                                     <h4>주요 장소:</h4>
                                     <ul>
-                                        {schedule.places.map((place, index) => (
+                                        {schedule.places.slice(0, 3).map((place, index) => (
                                             <li key={index}>{place.name}</li>
                                         ))}
+                                        {schedule.places.length > 3 && <li>...</li>}
                                     </ul>
                                 </SchedulePlaces>
                             )}
@@ -164,7 +166,7 @@ function SharedTripsPage() {
                                 </PhotoGrid>
                             )}
                             <ScheduleUser>
-                                공유자: {(schedule.user && schedule.user.username) ? schedule.user.username : '알 수 없음'}
+                                공유자: {(schedule.user && schedule.user.username) ? schedule.user.username : (schedule.username || '알 수 없음')}
                             </ScheduleUser>
                         </ScheduleCard>
                     ))}

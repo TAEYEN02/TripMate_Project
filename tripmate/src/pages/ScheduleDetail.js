@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-
+import { updateSchedule } from '../api/UserApi';
+import dayjs from 'dayjs';
+import { useMemo } from 'react';
 import MapComponent from '../components/map/ScheduleMapComponent';
-import PlaceSearchBar from '../components/schedule/PlaceSearchBar';
 import ReviewForm from '../components/ReviewForm';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { FaArrowDown } from 'react-icons/fa';
+import PlaceSearchBar from '../components/schedule/PlaceSearchBar';
 import { Button } from '../components/common/StyledComponents';
 
+// --- Styled Components ---
 const Container = styled.div`
   display: flex;
   height: 90vh;
@@ -24,66 +25,11 @@ const LeftSide = styled.div`
   flex-direction: column;
 `;
 
-const DateSelector = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-`;
-
-const DateButton = styled.button`
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  background-color: ${(props) => (props.$active ? '#007bff' : '#fff')};
-  color: ${(props) => (props.$active ? '#fff' : '#333')};
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  &:hover {
-    background-color: ${(props) => (props.$active ? '#0056b3' : '#eaeaea')};
-  }
-`;
-
 const MapWrapper = styled.div`
   flex: 1;
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 1rem;
-`;
-
-const ScheduleList = styled.div`
-  background-color: #f5f5f5;
-  border-radius: 12px;
-  padding: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
-`;
-
-const Item = styled.div`
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  margin-bottom: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-`;
-
-const DeleteButton = styled.button`
-  background-color: #ff6b6b;
-  border: none;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.3s ease;
-  &:hover {
-    background-color: #ff4c4c;
-  }
 `;
 
 const RightSide = styled.div`
@@ -105,322 +51,346 @@ const Title = styled.h1`
   margin-top: 0;
 `;
 
-const PhotoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 8px;
-`;
-
-const PhotoItem = styled.div`
-  width: 100%;
-  height: 100px;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+const PlaceItem = styled.div`
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  &:last-child {
+    border-bottom: none;
   }
 `;
 
-function ScheduleDetailFull() {
-  const { id } = useParams();
-  const { getAuthHeaders, user } = useAuth();
-  const navigate = useNavigate();
+const ModalBackground = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
 
-  const [schedule, setSchedule] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const ModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+`;
 
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [photos, setPhotos] = useState([]);
-  const [loadingPhotos, setLoadingPhotos] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [photoError, setPhotoError] = useState(null);
+const FormGroup = styled.div`
+  margin-bottom: 1rem;
+  label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  input, select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+  }
+`;
 
-  // dailyPlan: { 날짜: [장소 리스트] } 형태로 변환
-  const getDailyPlan = () => {
-    if (!schedule || !schedule.places) return {};
-    // schedule.places가 JSON 문자열로 되어있으면 파싱
-    let placesArray = [];
-    try {
-      placesArray = typeof schedule.places === 'string' ? JSON.parse(schedule.places) : schedule.places;
-    } catch {
-      placesArray = [];
+const PlaceListItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+`;
+
+const DayTabs = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #eee;
+`;
+
+const DayTab = styled.button`
+  padding: 0.75rem 1rem;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  color: ${props => (props.active ? '#007bff' : '#666')};
+  border-bottom: ${props => (props.active ? '2px solid #007bff' : '2px solid transparent')};
+  margin-bottom: -2px;
+`;
+
+
+// --- Edit Modal Component ---
+const TRANSPORT_OPTIONS = ['KTX', 'Bus', 'Car', 'Airplane', 'Walk'];
+
+function getDates(startDate, endDate) {
+    const dates = [];
+    let currentDate = dayjs(startDate);
+    const lastDate = dayjs(endDate);
+    while (currentDate.isBefore(lastDate) || currentDate.isSame(lastDate)) {
+        dates.push(currentDate.format('YYYY-MM-DD'));
+        currentDate = currentDate.add(1, 'day');
     }
-    // 예를 들어 placesArray 내 각 장소에 date 필드가 있다고 가정. 없으면 기본 날짜 하나로 묶기
-    if (placesArray.length > 0 && placesArray[0].date) {
-      // 날짜별로 그룹화
-      return placesArray.reduce((acc, place) => {
-        if (!acc[place.date]) acc[place.date] = [];
-        acc[place.date].push(place);
-        return acc;
-      }, {});
-    } else {
-      // 날짜 정보 없으면 전체를 하나의 날짜에 묶기
-      return { [schedule.date]: placesArray };
+    return dates;
+}
+
+
+
+function ScheduleEditModal({ schedule, onClose, onSave }) {
+  const [editableSchedule, setEditableSchedule] = useState(() => {
+    const sanitizedPlaces = (schedule.places || []).map(place => ({
+      ...place,
+      date: place.date ? dayjs(place.date).format('YYYY-MM-DD') : dayjs(schedule.startDate).format('YYYY-MM-DD')
+    }));
+    return {
+      ...schedule,
+      startDate: schedule.startDate ? dayjs(schedule.startDate).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
+      endDate: schedule.endDate ? dayjs(schedule.endDate).format('YYYY-MM-DD') : dayjs(schedule.startDate).format('YYYY-MM-DD'),
+      places: sanitizedPlaces
+    };
+  });
+
+  const tripDates = useMemo(() => {
+    return getDates(editableSchedule.startDate, editableSchedule.endDate);
+  }, [editableSchedule.startDate, editableSchedule.endDate]);
+
+  const [selectedDate, setSelectedDate] = useState(tripDates[0]);
+
+  useEffect(() => {
+    if (tripDates.length > 0 && !tripDates.includes(selectedDate)) {
+      setSelectedDate(tripDates[0]);
+    } else if (tripDates.length === 0) {
+      setSelectedDate(null);
+    }
+  }, [tripDates]); // Removed selectedDate from dependency array
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEditableSchedule(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePlaceAdd = (place) => {
+    const newPlace = { ...place, date: selectedDate };
+    const currentPlaces = editableSchedule.places || [];
+    if (currentPlaces.find(p => p.name === newPlace.name && p.address === newPlace.address && p.date === newPlace.date)) {
+      alert("이미 해당 날짜에 추가된 장소입니다.");
+      return;
+    }
+    setEditableSchedule(prev => ({ ...prev, places: [...currentPlaces, newPlace] }));
+  };
+
+  const removePlace = (placeToRemove) => {
+    const newPlaces = editableSchedule.places.filter(p => p !== placeToRemove);
+    setEditableSchedule(prev => ({ ...prev, places: newPlaces }));
+  };
+
+  const handleSave = async () => {
+    try {
+      await onSave(editableSchedule);
+      onClose();
+    } catch (error) {
+      alert('저장에 실패했습니다: ' + error.message);
+      console.error('Save failed:', error);
     }
   };
 
-  const dailyPlan = getDailyPlan();
+  return (
+    <ModalBackground onClick={onClose}>
+      <ModalContent onClick={(e) => e.stopPropagation()}>
+        <h2>일정 수정</h2>
+        {/* General Info */}
+        <FormGroup>
+          <label>제목</label>
+          <input name="title" value={editableSchedule.title || ''} onChange={handleChange} />
+        </FormGroup>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+            <FormGroup style={{ flex: 1 }}>
+                <label>여행 시작일</label>
+                <input name="startDate" type="date" value={editableSchedule.startDate || ''} onChange={handleChange} />
+            </FormGroup>
+            <FormGroup style={{ flex: 1 }}>
+                <label>여행 종료일</label>
+                <input name="endDate" type="date" value={editableSchedule.endDate || ''} onChange={handleChange} />
+            </FormGroup>
+        </div>
+        {/* Places by Day */}
+        <hr style={{ margin: '1rem 0' }} />
+        <h3>장소 관리</h3>
+        <DayTabs>
+            {tripDates.map((date, index) => (
+                <DayTab key={date} active={selectedDate === date} onClick={() => setSelectedDate(date)}>
+                    Day {index + 1}
+                </DayTab>
+            ))}
+        </DayTabs>
+        <PlaceSearchBar onPlaceSelect={handlePlaceAdd} />
+        <div style={{ marginTop: '1rem' }}>
+          {(editableSchedule.places || []).filter(p => p.date === selectedDate).map((place, index) => (
+            <PlaceListItem key={`${place.name}-${place.address}-${place.date}-${index}`}>
+              <span>{place.name} ({place.address})</span>
+              <Button onClick={() => removePlace(place)} style={{ backgroundColor: '#ff6b6b' }}>삭제</Button>
+            </PlaceListItem>
+          ))}
+        </div>
 
-  const travelDates = Object.keys(dailyPlan);
-  useEffect(() => {
-    if (travelDates.length > 0) {
-      setSelectedDate(travelDates[0]);
-    }
-  }, [schedule]); // schedule이 바뀌면 날짜 초기화
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+          <Button onClick={onClose} style={{ backgroundColor: '#6c757d' }}>취소</Button>
+          <Button onClick={handleSave}>저장</Button>
+        </div>
+      </ModalContent>
+    </ModalBackground>
+  );
+}
 
-  // 데이터 fetching
+// --- Main Detail Component ---
+function ScheduleDetailFull() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  
+  const [schedule, setSchedule] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null);
+
   const fetchSchedule = useCallback(async () => {
     try {
       setLoading(true);
-      const headers = getAuthHeaders();
-      const res = await api.get(`/schedule/${id}`, { headers });
-      setSchedule(res.data);
+      const res = await api.get(`/schedule/${id}`);
+      const rawData = res.data;
+      const sanitizedSchedule = {
+        ...rawData,
+        startDate: rawData.startDate || dayjs().format('YYYY-MM-DD'),
+        endDate: rawData.endDate || rawData.startDate || dayjs().format('YYYY-MM-DD'),
+        places: rawData.places || [],
+      };
+      setSchedule(sanitizedSchedule);
       setError(null);
+
+      const dailyPlanForMap = (sanitizedSchedule.places || []).reduce((acc, place) => {
+        const date = place.date || sanitizedSchedule.startDate;
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push(place);
+        return acc;
+      }, {});
+      const initialTripDates = Object.keys(dailyPlanForMap).sort();
+      if (initialTripDates.length > 0) {
+        setSelectedDay(initialTripDates[0]);
+      }
+
     } catch (err) {
-      console.error(err);
       setError('스케줄 정보를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
-    }
-  }, [id, getAuthHeaders]);
-
-  const fetchReviews = useCallback(async () => {
-    try {
-      const res = await api.get(`/reviews/schedule/${id}`);
-      setReviews(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [id]);
-
-  const fetchPhotos = useCallback(async () => {
-    try {
-      setLoadingPhotos(true);
-      const res = await api.get(`/photos/schedule/${id}`);
-      setPhotos(res.data);
-      setPhotoError(null);
-    } catch (err) {
-      console.error(err);
-      setPhotoError('사진을 불러오는데 실패했습니다.');
-    } finally {
-      setLoadingPhotos(false);
     }
   }, [id]);
 
   useEffect(() => {
     fetchSchedule();
-    fetchReviews();
-    fetchPhotos();
-  }, [fetchSchedule, fetchReviews, fetchPhotos]);
+  }, [fetchSchedule]);
 
-  // 일정 드래그앤드롭
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-    const { source, destination } = result;
-    const updated = { ...schedule };
-    const srcItems = Array.from(dailyPlan[source.droppableId]);
-    const [moved] = srcItems.splice(source.index, 1);
-
-    // 출발지 리스트 업데이트
-    updated.places = Object.entries(dailyPlan).flatMap(([date, places]) =>
-      date === source.droppableId ? srcItems : places
-    );
-
-    // 도착지 리스트 업데이트
-    const destItems = Array.from(dailyPlan[destination.droppableId] || []);
-    destItems.splice(destination.index, 0, moved);
-
-    updated.places = Object.entries(dailyPlan).flatMap(([date, places]) =>
-      date === destination.droppableId ? destItems : places
-    );
-
-    // 이부분은 실제 API PUT/PATCH 요청을 통해 서버에 업데이트 필요
-    // 여기서는 일단 로컬에서만 업데이트
-    setSchedule(updated);
-  };
-  // 로그인한 사용자와 일정 작성자 동일
-  const isOwner = user && schedule && schedule.user && (
-  user.userId === schedule.user.userId ||
-  user.id === schedule.user.id
-);
-
-
-  console.log('user:', user);
-  console.log('schedule.user:', schedule?.user);
-  console.log('isOwner:', isOwner);
-
-  const handleFileChange = (e) => setSelectedFile(e.target.files[0]);
-  const handlePhotoUpload = async () => {
-    if (!selectedFile) {
-      alert('업로드할 파일을 선택해주세요.');
-      return;
-    }
-    setLoadingPhotos(true);
-    setPhotoError(null);
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+  const handleUpdateSchedule = async (dataToSave) => {
     try {
-      const headers = getAuthHeaders();
-      await api.post(`/photos/upload/${id}`, formData, { headers });
-      alert('사진이 성공적으로 업로드되었습니다!');
-      setSelectedFile(null);
-      fetchPhotos();
-    } catch (err) {
-      console.error(err);
-      setPhotoError('사진 업로드 중 오류가 발생했습니다.');
-    } finally {
-      setLoadingPhotos(false);
+      await updateSchedule(id, dataToSave);
+      fetchSchedule();
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      alert('스케줄 업데이트에 실패했습니다.');
     }
   };
 
-  const handleReviewSubmitted = () => fetchReviews();
+  const isOwner = user && schedule && schedule.userId === user.userId;
+
+  if (loading) return <p>로딩 중...</p>;
+  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (!schedule) return <p>스케줄을 찾을 수 없습니다.</p>;
+
+  const dailyPlanForMap = (schedule.places || []).reduce((acc, place) => {
+    const date = place.date || schedule.startDate;
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push(place);
+    return acc;
+  }, {});
+
+  const tripDates = Object.keys(dailyPlanForMap).sort();
 
   return (
-    <Container>
-      <LeftSide>
-        {/* 날짜 선택 */}
-        <DateSelector>
-          {travelDates.map(date => (
-            <DateButton
-              key={date}
-              $active={selectedDate === date}
-              onClick={() => setSelectedDate(date)}
-            >
-              {date}
-            </DateButton>
-          ))}
-        </DateSelector>
+    <>
+      <Container>
+        <LeftSide>
+          <MapWrapper>
+            <MapComponent
+              dailyPlan={dailyPlanForMap}
+              selectedDate={selectedDay}
+            />
+          </MapWrapper>
+        </LeftSide>
+        <RightSide>
+          <DetailSection>
+            <Title>{schedule.title || '제목 없음'}</Title>
+            <p><strong>작성자:</strong> {schedule.username || '알 수 없음'}</p>
+            <p><strong>기간:</strong> {schedule.startDate} ~ {schedule.endDate}</p>
+            {isOwner && (
+              <Button onClick={() => setIsModalOpen(true)}>수정하기</Button>
+            )}
+          </DetailSection>
 
-        {/* 지도 */}
-        <MapWrapper>
-          <MapComponent
-            dailyPlan={dailyPlan}
-            selectedDate={selectedDate}
-          />
-        </MapWrapper>
+          <DayTabs>
+            {tripDates.map((date, index) => (
+              <DayTab key={date} active={selectedDay === date} onClick={() => setSelectedDay(date)}>
+                Day {index + 1} ({date})
+              </DayTab>
+            ))}
+          </DayTabs>
 
-        {/* 일정 리스트 (드래그앤드롭) */}
-        {selectedDate && dailyPlan[selectedDate] && (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId={selectedDate}>
-              {(provided) => (
-                <ScheduleList
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  {dailyPlan[selectedDate].map((place, idx) => (
-                    <Draggable
-                      key={`${selectedDate}-${idx}`}
-                      draggableId={`${selectedDate}-${idx}`}
-                      index={idx}
-                    >
-                      {(provided) => (
-                        <Item
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          <div>{place.name}</div>
-                          {/* 삭제 버튼은 소유자만 보여주기 */}
-                          {isOwner && (
-                            <DeleteButton
-                              onClick={() => {
-                                // 삭제 로직 (로컬 상태 + 서버 API 필요)
-                                alert('삭제 기능 구현 필요');
-                              }}
-                            >
-                              삭제
-                            </DeleteButton>
-                          )}
-                        </Item>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </ScheduleList>
+          {selectedDay && (
+            <DetailSection>
+              <h3>Day {tripDates.indexOf(selectedDay) + 1} ({selectedDay})</h3>
+              {(dailyPlanForMap[selectedDay] && dailyPlanForMap[selectedDay].length > 0) ? (
+                dailyPlanForMap[selectedDay].map((place, pIndex) => (
+                  <PlaceItem key={pIndex}>
+                    <strong>{pIndex + 1}. {place.name}</strong>
+                    <p style={{ fontSize: '0.9rem', color: '#666', margin: '4px 0 0 0' }}>{place.address}</p>
+                  </PlaceItem>
+                ))
+              ) : (
+                <p>등록된 장소가 없습니다.</p>
               )}
-            </Droppable>
-          </DragDropContext>
-        )}
-      </LeftSide>
-
-      <RightSide>
-        <DetailSection>
-          <Title>{schedule?.title || '제목 없음'}</Title>
-          <p><strong>작성자:</strong> {schedule?.user?.username || '알 수 없음'}</p>
-          <p><strong>날짜:</strong> {schedule?.date}</p>
-          <p><strong>출발지:</strong> {schedule?.departure}</p>
-          <p><strong>도착지:</strong> {schedule?.arrival}</p>
-          <p><strong>교통수단:</strong> {schedule?.transportType}</p>
-          <p><strong>공개 여부:</strong> {schedule?.public ? '공개' : '비공개'}</p>
-
-          {isOwner && (
-            <Button
-              style={{
-                marginTop: '1rem',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: '600',
-              }}
-              onClick={() => navigate(`/my-schedule/${id}`)}
-            >
-              수정하기
-            </Button>
+            </DetailSection>
           )}
-        </DetailSection>
 
-        <DetailSection>
-          <h3>사진 관리</h3>
-          {isOwner && (
-            <>
-              <input type="file" onChange={handleFileChange} />
-              <button onClick={handlePhotoUpload} disabled={loadingPhotos || !selectedFile}>
-                {loadingPhotos ? '업로드 중...' : '사진 업로드'}
-              </button>
-              {photoError && <p style={{ color: 'red' }}>{photoError}</p>}
-            </>
-          )}
-          {photos.length === 0 ? (
-            <p>아직 업로드된 사진이 없습니다.</p>
-          ) : (
-            <PhotoGrid>
-              {photos.map(photo => (
-                <PhotoItem key={photo.id}>
-                  <img src={`http://localhost:10000${photo.imageUrl}`} alt="Schedule" />
-                </PhotoItem>
-              ))}
-            </PhotoGrid>
-          )}
-        </DetailSection>
+          <DetailSection>
+            <h3>리뷰</h3>
+            <ReviewForm
+              scheduleId={id}
+              reviews={reviews}
+              setReviews={setReviews}
+            />
+          </DetailSection>
+        </RightSide>
+      </Container>
 
-        <DetailSection>
-          <h3>리뷰</h3>
-          {reviews.length === 0 && <p>아직 작성된 리뷰가 없습니다.</p>}
-          {reviews.map(review => (
-            <div key={review.id} style={{ marginBottom: 8, borderBottom: '1px solid #eee', paddingBottom: 8 }}>
-              <strong>{review.title}</strong> ({review.rating}점)
-              <p>{review.content}</p>
-              <small>작성자: {review.user?.username || '알 수 없음'}</small>
-            </div>
-          ))}
-
-          {/* 리뷰 작성 폼: 로그인 & 공개 & 작성자 아님 */}
-          {user && schedule?.public && isOwner === false && (
-            <ReviewForm scheduleId={id} onReviewSubmitted={handleReviewSubmitted} />
-          )}
-        </DetailSection>
-      </RightSide>
-    </Container>
+      {isModalOpen && (
+        <ScheduleEditModal
+          schedule={schedule}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleUpdateSchedule}
+        />
+      )}
+    </>
   );
 }
 

@@ -1,7 +1,9 @@
 package com.korea.trip.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -28,6 +30,9 @@ public class Place {
 	private double lat;
 	private double lng;
 	
+	@Column(name="date")
+	private String date; // YYYY-MM-DD format
+
 	@JsonProperty("categoryCode")
 	private String category;
 	
@@ -37,5 +42,6 @@ public class Place {
 	
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id")  // FK 컬럼명 지정
+	@JsonIgnore
     private Schedule schedule;
 }

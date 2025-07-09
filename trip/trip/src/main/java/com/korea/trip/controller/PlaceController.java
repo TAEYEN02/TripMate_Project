@@ -11,10 +11,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.korea.trip.dto.PlaceDto;
+import com.korea.trip.dto.PlaceDTO;
 import com.korea.trip.dto.place.PlaceResponse;
 import com.korea.trip.dto.place.PlaceSearchRequest;
 import com.korea.trip.service.PlaceService;
+import com.korea.trip.util.KakaoPlaceUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class PlaceController {
 
 	private final PlaceService placeService;
+	private final KakaoPlaceUtil kakaoPlaceUtil;
 
 	// POST 방식: JSON body로 키워드+필터 검색 (DB 기반)
 	@PostMapping("/search")
@@ -34,9 +36,9 @@ public class PlaceController {
 
 	// GET 방식: 쿼리 파라미터로 키워드+카테고리 검색 (Kakao API 기반)
 	@GetMapping("/search")
-	public ResponseEntity<List<PlaceDto>> searchPlacesFromKakao(@RequestParam(name = "keyword") String keyword,
+	public ResponseEntity<List<PlaceDTO>> searchPlacesFromKakao(@RequestParam(name = "keyword") String keyword,
 			@RequestParam(name = "category", required = false) String category) {
-		List<PlaceDto> results = placeService.searchPlaces(keyword, category);
+		List<PlaceDTO> results = placeService.searchPlaces(keyword, category);
 		return ResponseEntity.ok(results);
 	}
 
@@ -45,5 +47,12 @@ public class PlaceController {
 		PlaceResponse place = placeService.getPlaceById(placeId);
 		return ResponseEntity.ok(place);
 	}
+	
+	@GetMapping("/recommend")
+    public ResponseEntity<List<PlaceDTO>> recommendPlaces(@RequestParam String keyword) {
+        List<PlaceDTO> places = kakaoPlaceUtil.searchRecommendedPlaces(keyword);
+        return ResponseEntity.ok(places);
+    }
+	
 
 }

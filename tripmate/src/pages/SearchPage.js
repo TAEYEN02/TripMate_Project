@@ -2,7 +2,7 @@ import { useState } from "react";
 import styled from "styled-components";
 import ScheduleForm from "../components/planner/PlaceRecomendForm";
 import ScheduleResult from "../components/planner/ScheduleResult";
-import { autoGenerateSchedule } from "../api/scheduleApi";
+import { autoGenerateSchedule, fetchRecommendedPlaces, generateMultiSchedule } from "../api/scheduleApi";
 import MapComponent from "../components/map/MapComponent";
 
 const Container = styled.div`
@@ -75,21 +75,23 @@ const ResultBox = styled.div`
   width: 100%;
 `;
 
-const Message = styled.p`
+// error prop을 DOM에 넘기지 않도록 isError로 변경
+const Message = styled.p.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isError',
+})`
   text-align: center;
   margin-top: 1rem;
-  color: ${(props) => (props.error ? "red" : "#555")};
-  font-weight: ${(props) => (props.error ? "700" : "400")};
+  color: ${(props) => (props.isError ? "red" : "#555")};
+  font-weight: ${(props) => (props.isError ? "700" : "400")};
 `;
 
-const PlannerPage = ({ defaultDeparture = "서울", defaultArrival = "부산" }) => {
+const SearchPage = ({ defaultDeparture = "서울", defaultArrival = "부산" }) => {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedPlaceId, setSelectedPlaceId] = useState(null); // 선택된 장소 ID 상태
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [filteredPlaces, setFilteredPlaces] = useState([]);
 
-  // 일정 추가하기 버튼 클릭 시, 일정 생성 폼으로 포커스 이동 등 원하는 동작 추가 가능
   const handleAddScheduleClick = () => {
     alert("일정 추가하기 버튼 클릭! 일정 생성 폼에서 새로운 여행지를 입력하세요.");
   };
@@ -99,20 +101,41 @@ const PlannerPage = ({ defaultDeparture = "서울", defaultArrival = "부산" })
     setError("");
     setSchedule(null);
     setSelectedPlaceId(null);
+    setFilteredPlaces([]);
 
     try {
-      const res = await autoGenerateSchedule(formData);
-      setSchedule(res.data);
+      const payload = {
+        departure: formData.departure,
+        arrival: formData.arrival,
+        date: formData.date,
+        days: formData.days,
+      };
+
+      // 추천 장소 조회
+      const recommendRes = await fetchRecommendedPlaces(formData.arrival);
+      let places = [];
+
+      if (Array.isArray(recommendRes)) {
+        places = recommendRes;
+      } else if (recommendRes && Array.isArray(recommendRes.places)) {
+        places = recommendRes.places;
+      }
+
+      setFilteredPlaces(places);
+
+      // 일정 생성 API 호출 (다일정 생성)
+      const scheduleRes = await generateMultiSchedule(payload);
+      setSchedule(scheduleRes || null);
+
+      if (places.length > 0) setSelectedPlaceId(places[0].id);
     } catch (err) {
       setError("일정 생성 중 오류가 발생했습니다.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePlaceClick = (placeId) => {
-    setSelectedPlaceId(placeId);
-  };
 
   return (
     <Container>
@@ -124,7 +147,11 @@ const PlannerPage = ({ defaultDeparture = "서울", defaultArrival = "부산" })
       </TitleRow>
       <TopRow>
         <FormBox>
-          <ScheduleForm onSubmit={handleGenerate} defaultDeparture={defaultDeparture} defaultArrival={defaultArrival} />
+          <ScheduleForm
+            onSubmit={handleGenerate}
+            defaultDeparture={defaultDeparture}
+            defaultArrival={defaultArrival}
+          />
         </FormBox>
         <MapBox>
           <MapComponent
@@ -136,7 +163,7 @@ const PlannerPage = ({ defaultDeparture = "서울", defaultArrival = "부산" })
       </TopRow>
       <ResultBox>
         {loading && <Message>⏳ 일정을 생성 중입니다...</Message>}
-        {error && <Message error>{error}</Message>}
+        {error && <Message isError>{error}</Message>}
         {schedule && (
           <ScheduleResult
             schedule={schedule}
@@ -150,4 +177,4 @@ const PlannerPage = ({ defaultDeparture = "서울", defaultArrival = "부산" })
   );
 };
 
-export default PlannerPage;
+export default SearchPage;

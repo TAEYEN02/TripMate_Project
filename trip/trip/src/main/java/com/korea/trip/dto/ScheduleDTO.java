@@ -1,17 +1,13 @@
 package com.korea.trip.dto;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.korea.trip.models.Place;
 import com.korea.trip.models.Schedule;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -22,36 +18,45 @@ public class ScheduleDTO {
     private Long id;
     private String title;
     private String description;
-    private String date;
+    private String startDate;
+    private String endDate;
+    private String departure;
+    private String arrival;
+    private String transportType;
     private boolean isPublic;
 
-    // 필요 시 추가: 시간, 장소 정보 등
-    private List<Place> places;
+    private List<PlaceDTO> places;
+    private List<ReviewDTO> reviews;
 
-    // 유저 정보 일부 포함 가능
     private String userId;
     private String username;
 
     public static ScheduleDTO fromEntity(Schedule schedule) {
-    	
-    	  List<Place> placeList = new ArrayList<>();
-    	    try {
-    	        ObjectMapper mapper = new ObjectMapper();
-    	        placeList = mapper.readValue(schedule.getPlace(), new TypeReference<List<Place>>() {});
-    	    } catch (Exception e) {
-    	        e.printStackTrace();
-    	    }
+        List<PlaceDTO> placeDTOs = schedule.getPlaces().stream()
+                .map(PlaceDTO::fromEntity)
+                .collect(Collectors.toList());
 
-    	
+        List<ReviewDTO> reviewDTOs = schedule.getReviews().stream()
+                .map(ReviewDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        String userId = schedule.getUser() != null ? schedule.getUser().getUserId() : null;
+        String username = schedule.getUser() != null ? schedule.getUser().getUsername() : "알 수 없음";
+
         return ScheduleDTO.builder()
                 .id(schedule.getId())
                 .title(schedule.getTitle())
                 .description(schedule.getDescription())
-                .date(schedule.getDate())
+                .startDate(schedule.getStartDate())
+                .endDate(schedule.getEndDate())
+                .departure(schedule.getDeparture())
+                .arrival(schedule.getArrival())
+                .transportType(schedule.getTransportType())
                 .isPublic(schedule.isPublic())
-                .places(schedule.getPlaces())
-                .userId(schedule.getUser().getUserId())
-                .username(schedule.getUser().getUsername()) 
+                .places(placeDTOs)
+                .reviews(reviewDTOs)
+                .userId(userId)
+                .username(username)
                 .build();
     }
 }

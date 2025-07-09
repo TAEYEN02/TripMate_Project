@@ -3,7 +3,7 @@ import styled from "styled-components";
 import ScheduleForm from "../components/schedule/ScheduleForm";
 import MultiDayScheduleResult from "../components/schedule/MultiDayScheduleResult";
 import MapComponent from "../components/map/ScheduleMapComponent";
-import { generateMultiSchedule } from "../api/scheduleApi";
+import { fetchRecommendedPlaces, generateMultiSchedule } from "../api/scheduleApi";
 
 const Container = styled.div`
   width: 100%;
@@ -54,10 +54,11 @@ const Message = styled.p`
 `;
 
 const SchedulePage = ({
-  defaultDeparture = "서울",
-  defaultArrival = "부산",
-  defaultDate = "",
-  defaultDays = 1
+    defaultDeparture = "",
+    defaultArrival = "",
+    defaultDate = "",
+    defaultDays = 1,
+    onScheduleGenerated // 부모로부터 받을 콜백 함수
 }) => {
     const [schedule, setSchedule] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -66,26 +67,51 @@ const SchedulePage = ({
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [selectedDate, setSelectedDate] = useState(null);
 
+    const [filteredPlaces, setFilteredPlaces] = useState([]);
+    const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+
     const handleGenerate = async (formData) => {
         setLoading(true);
         setError("");
         setSchedule(null);
-        setSelectedPlace(null);
-        setSelectedDate(null);
+        setSelectedPlaceId(null);
 
         try {
-            const res = await generateMultiSchedule(formData);
-            setSchedule(res.data);
+            const recommendRes = await fetchRecommendedPlaces(formData.arrival);
+            console.log("추천 장소:", recommendRes);
+            const scheduleRes = await generateMultiSchedule({
+                departure: formData.departure,
+                arrival: formData.arrival,
+                date: formData.date,
+                days: formData.days,
+            });
+            console.log("생성된 일정:", scheduleRes);
 
-            // 일정 생성 후 첫 날짜 자동 선택
-            const dates = Object.keys(res.data.dailyPlan);
-            if (dates.length > 0) setSelectedDate(dates[0]);
+            const places = recommendRes.places || recommendRes;
+            setFilteredPlaces(places);
+
+            setSchedule({
+                places,
+                dailyPlan: scheduleRes.dailyPlan,
+            });
         } catch (err) {
             setError("일정 생성 중 오류가 발생했습니다.");
         } finally {
             setLoading(false);
         }
     };
+
+    const handleAddSchedule = () => {
+        if (onScheduleGenerated) {
+            // 모달로 사용될 경우: 콜백 함수를 호출하여 데이터를 부모에게 전달
+            onScheduleGenerated(schedule);
+        } else {
+            // 독립 페이지로 사용될 경우: 기존 방식대로 동작
+            localStorage.setItem("mySchedule", JSON.stringify(schedule));
+            window.location.href = "/my-schedule";
+        }
+    };
+
 
     return (
         <Container>
@@ -127,10 +153,7 @@ const SchedulePage = ({
                             onPlaceClick={(place) => setSelectedPlace(place)}
                         />
                         <button
-                            onClick={() => {
-                                localStorage.setItem("mySchedule", JSON.stringify(schedule));
-                                window.location.href = "/my-schedule";
-                            }}
+                            onClick={handleAddSchedule} // 수정된 핸들러 연결
                             style={{
                                 marginTop: "1rem",
                                 padding: "0.5rem 1rem",

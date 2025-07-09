@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.korea.trip.dto.MultiDayScheduleResponse;
+import com.korea.trip.dto.PlaceDTO;
 import com.korea.trip.dto.ScheduleCreateRequest;
 import com.korea.trip.dto.ScheduleDTO;
 import com.korea.trip.dto.ScheduleRequest;
@@ -41,21 +43,35 @@ public class ScheduleController {
 		this.scheduleService = scheduleService;
 		this.generateItinerary = generateItinerary;
 	}
+	
+	//스케줄 만들고 저장하는 컴포넌트
+	@PostMapping("")
+	public ResponseEntity<ScheduleDTO> createSchedule(
+	    @RequestBody ScheduleCreateRequest request,
+	    @CurrentUser UserPrincipal currentUser) {
+	    try {
+	        ScheduleDTO savedSchedule = scheduleService.createSchedule(request, currentUser.getId());
+	        return ResponseEntity.status(HttpStatus.CREATED).body(savedSchedule);
+	    } catch (Exception e) {
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+	    }
+	}
 
 	@PostMapping("/auto-generate")
 	public ResponseEntity<?> autoGenerate(@RequestBody ScheduleCreateRequest request,
-			@CurrentUser UserPrincipal currentUser) {
-		try {
-			ScheduleResponse schedule = scheduleService.generateSchedule(request.getDeparture(), request.getArrival(),
-					request.getDate(), request.getTransportType());
+	                                      @CurrentUser UserPrincipal currentUser) {
+	    try {
+	        ScheduleResponse schedule = scheduleService.generateSchedule(request.getDeparture(), request.getArrival(),
+	                request.getStartTime(), request.getEndTime(), request.getTransportType());
 
-			scheduleService.saveScheduleToUser(schedule, currentUser.getId());
+	        scheduleService.saveScheduleToUser(schedule, currentUser.getId());
 
-			return ResponseEntity.ok(schedule);
-		} catch (Exception e) {
-			return ResponseEntity.status(500).body("서버 오류 발생: " + e.getMessage());
-		}
+	        return ResponseEntity.ok(schedule);
+	    } catch (Exception e) {
+	        return ResponseEntity.status(500).body("서버 오류 발생: " + e.getMessage());
+	    }
 	}
+
 
 	// 다일정 생성 엔드포인트
 	@PostMapping("/generate-multi")
@@ -64,6 +80,17 @@ public class ScheduleController {
 		return generateItinerary.generateMultiDaySchedule(request.getDeparture(), request.getArrival(),
 				request.getDate(), request.getDays());
 	}
+
+    // 새로운 여행지 추천 엔드포인트
+    @GetMapping("/places/recommend")
+    public ResponseEntity<List<PlaceDTO>> getRecommendedPlaces(@RequestParam("keyword") String keyword) {
+        try {
+            List<PlaceDTO> recommendedPlaces = scheduleService.getRecommendedPlaces(keyword);
+            return ResponseEntity.ok(recommendedPlaces);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null); // Or a more specific error DTO
+        }
+    }
 
 	@GetMapping("/shared")
 	public ResponseEntity<List<ScheduleDTO>> getSharedSchedules() {
@@ -80,9 +107,9 @@ public class ScheduleController {
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Schedule> getScheduleById(@PathVariable("id") Long id) {
+	public ResponseEntity<ScheduleDTO> getScheduleById(@PathVariable("id") Long id) {
 		Schedule schedule = scheduleService.getScheduleById(id);
-		return ResponseEntity.ok(schedule);
+		return ResponseEntity.ok(ScheduleDTO.fromEntity(schedule));
 	}
 
 	@GetMapping("/user/{userId}")
@@ -101,6 +128,12 @@ public class ScheduleController {
 			return ResponseEntity.notFound().build();
 		}
 	}
+
+	@PutMapping("/{id}")
+    public ResponseEntity<ScheduleDTO> updateSchedule(@PathVariable("id") Long id, @RequestBody ScheduleDTO scheduleDTO) {
+        Schedule updatedSchedule = scheduleService.updateSchedule(id, scheduleDTO);
+        return ResponseEntity.ok(ScheduleDTO.fromEntity(updatedSchedule));
+    }
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> deleteSchedule(@PathVariable("id") Long id) {

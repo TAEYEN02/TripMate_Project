@@ -79,3 +79,41 @@ export const fetchSharedSchedules = async (userId) => {
         throw error;
     }
 };
+
+// 스케줄 공유
+export const shareSchedule = async (scheduleId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        throw new Error("로그인이 필요합니다.");
+    }
+    try {
+        const response = await api.put(`/schedule/${scheduleId}/share`, { isPublic: true }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("🚨 shareSchedule 에러:", error);
+        throw error;
+    }
+};
+
+// 스케줄 업데이트
+export const updateSchedule = async (scheduleId, scheduleData) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        throw new Error("로그인이 필요합니다.");
+    }
+    try {
+        const response = await api.put(`/schedule/${scheduleId}`, scheduleData, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("🚨 updateSchedule 에러:", error);
+        throw error;
+    }
+};

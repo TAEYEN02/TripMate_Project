@@ -2,6 +2,7 @@ package com.korea.trip.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -20,23 +21,28 @@ public class Schedule {
 
     private String title;
     private String description;
+    private String departure;
+    private String arrival;
+    private String transportType;
+    
+    @Column(name = "start_time")
     private LocalDateTime startTime;
+    @Column(name = "end_time")
     private LocalDateTime endTime;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(nullable = false)
+    @Column(name = "is_public", nullable = false)
     private boolean isPublic = false;
 
-    @Column(name = "date")
-    private String date;
+    @Column(name = "start_date")
+    private String startDate;
 
-    @Lob
-    @Column(name = "places", columnDefinition = "TEXT")
-    private String place; 
-    
+    @Column(name = "end_date")
+    private String endDate;
+
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Place> places = new ArrayList<>();
 

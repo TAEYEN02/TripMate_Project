@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/index'; // api 인스턴스 import
-import { fetchSchedules, fetchSharedSchedules, fetchUserProfile } from '../api/UserApi';
+import api from '../api/index';
+import { fetchSchedules, fetchSharedSchedules, fetchUserProfile, shareSchedule } from '../api/UserApi';
 
+// Styled Components (omitted for brevity, they are correct)
 const MypageContainer = styled.div`
   max-width: 600px;
   margin: 2rem auto;
@@ -25,10 +26,6 @@ const UserInfo = styled.div`
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
   }
-`;
-
-const ScheduleList = styled.div`
-  margin-top: 2rem;
 `;
 
 const ScheduleItem = styled.div`
@@ -58,6 +55,7 @@ const ScheduleItem = styled.div`
 const ButtonGroup = styled.div`
   display: flex;
   gap: 1rem;
+  margin-top: 0.5rem;
 `;
 
 const Button = styled.button`
@@ -120,98 +118,68 @@ const ScheduleSection = styled.div`
   background-color: #fafafa;
 `;
 
+
 function Mypage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { userId: paramUserId } = useParams(); // URL에서 userId 받기 (UserPage 기능)
-  const [localUser, setLocalUser] = useState(null); // 페이지에 보여줄 유저 정보
+  const { userId: paramUserId } = useParams();
+
+  const [localUser, setLocalUser] = useState(null);
   const [mySchedules, setMySchedules] = useState([]);
-  const [loadingSchedules, setLoadingSchedules] = useState(true);
-  const [scheduleError, setScheduleError] = useState(null);
+  const [sharedSchedules, setSharedSchedules] = useState([]);
+  
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editUsername, setEditUsername] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
+
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sharedSchedules, setSharedSchedules] = useState([]);
-  const [loadingSharedSchedules, setLoadingSharedSchedules] = useState(true);
-  const [sharedScheduleError, setSharedScheduleError] = useState(null);
 
-  useEffect(() => {
-    const getUserProfile = async () => {
-      try {
-        setIsLoadingUser(true);
-        setError(null);
-        const profile = await fetchUserProfile(paramUserId, user);
-        setLocalUser(profile);
-        setIsEditingProfile(false);
-      } catch (err) {
-        setError('사용자 정보를 불러오는 중 오류가 발생했습니다.');
-        setLocalUser(null);
-      } finally {
-        setIsLoadingUser(false);
-      }
-    };
-    getUserProfile();
-  }, [paramUserId, user]);
-
-  useEffect(() => {
-    if (localUser) {
-      setEditUsername(localUser.username || '');
-      setEditEmail(localUser.email || '');
+  const fetchAllData = useCallback(async (currentUser) => {
+    if (!currentUser) return;
+    try {
+      const [schedules, shared] = await Promise.all([
+        fetchSchedules(currentUser, paramUserId),
+        fetchSharedSchedules(currentUser.userId)
+      ]);
+      setMySchedules(schedules);
+      setSharedSchedules(shared);
+    } catch (err) {
+      setError('데이터를 불러오는 중 오류가 발생했습니다.');
     }
-  }, [localUser]);
-//내가 작성한 여행계획
-  useEffect(() => {
-    const getSchedules = async () => {
-      if (!localUser) {
-        setLoadingSchedules(false);
-        return;
-      }
-      try {
-        setLoadingSchedules(true);
-        const schedules = await fetchSchedules(localUser, paramUserId);
-        setMySchedules(schedules);
-        setScheduleError(null);
-      } catch (error) {
-        if (error.response && error.response.status === 401) {
-          setScheduleError('로그인이 필요합니다.');
-        } else {
-          setScheduleError(error.message || '내 여행 계획을 불러오는데 실패했습니다.');
-        }
-        setMySchedules([]);
-      } finally {
-        setLoadingSchedules(false);
-      }
-    };
-    getSchedules();
-  }, [localUser, paramUserId]);
+  }, [paramUserId]);
 
-  //여행 계획 공유 일정 불러오기 
-  useEffect(() => {
-    const getSharedSchedules = async () => {
-      if (!localUser) {
-        setLoadingSharedSchedules(false);
-        return;
+  const loadUserProfile = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const profile = await fetchUserProfile(paramUserId, user);
+      if (profile) {
+        // Sanitize data before setting state to prevent null values in inputs
+        const sanitizedProfile = {
+          ...profile,
+          username: profile.username || '',
+          email: profile.email || '',
+        };
+        setLocalUser(sanitizedProfile);
+        setEditUsername(sanitizedProfile.username);
+        setEditEmail(sanitizedProfile.email);
+        await fetchAllData(sanitizedProfile);
+      } else {
+        setError('사용자 정보를 찾을 수 없습니다.');
       }
-      try {
-        setLoadingSharedSchedules(true);
-        const shared = await fetchSharedSchedules(localUser.userId);
-        setSharedSchedules(shared);
-        setSharedScheduleError(null);
-      } catch (error) {
-        setSharedScheduleError(error.message || '공유한 여행 계획을 불러오는데 실패했습니다.');
-        setSharedSchedules([]);
-      } finally {
-        setLoadingSharedSchedules(false);
-      }
-    };
-    getSharedSchedules();
-  }, [localUser, user]);
+    } catch (err) {
+      setError('사용자 정보를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [paramUserId, user, fetchAllData]);
 
-  // 현재 로그인한 유저와 페이지의 유저가 같으면 true (수정 및 삭제 권한)
-  const isOwner = user && localUser && user.userId === localUser.userId;
+  useEffect(() => {
+    loadUserProfile();
+  }, [loadUserProfile]);
+
+  const isOwner = user && localUser && String(user.userId || user.id) === String(localUser.userId);
 
   const handleLogout = () => {
     logout();
@@ -220,7 +188,7 @@ function Mypage() {
   };
 
   const handleWithdraw = async () => {
-    if (!isOwner) return; // 다른 유저 페이지면 동작 안 함
+    if (!isOwner) return;
     if (window.confirm('정말로 회원 탈퇴를 하시겠습니까?')) {
       try {
         await api.delete('/auth/withdraw');
@@ -234,7 +202,7 @@ function Mypage() {
   };
 
   const handleDeleteSchedule = async (scheduleId) => {
-    if (!isOwner) return; // 다른 유저 페이지면 동작 안 함
+    if (!isOwner) return;
     if (window.confirm('정말로 이 여행 계획을 삭제하시겠습니까?')) {
       try {
         await api.delete(`/schedule/${scheduleId}`);
@@ -246,33 +214,41 @@ function Mypage() {
     }
   };
 
-  const handleEditToggle = () => {
-    setIsEditingProfile(!isEditingProfile);
+  const handleShare = async (scheduleId) => {
+    if (!isOwner) return;
+    if (window.confirm('이 여행 계획을 다른 사용자들과 공유하시겠습니까?')) {
+      try {
+        await shareSchedule(scheduleId);
+        alert('여행 계획이 성공적으로 공유되었습니다.');
+        await fetchAllData(localUser);
+      } catch (error) {
+        alert(error.message || '여행 계획 공유 중 오류가 발생했습니다.');
+      }
+    }
   };
 
   const handleUpdateProfile = async () => {
-    if (!isOwner) return; // 다른 유저 페이지면 동작 안 함
+    if (!isOwner) return;
     try {
-      const updateData = {
-        username: editUsername,
-        email: editEmail,
-      };
+      const updateData = { username: editUsername, email: editEmail };
       if (editPassword) {
         updateData.password = editPassword;
       }
       await api.put('/auth/profile', updateData);
       alert('프로필 정보가 성공적으로 업데이트되었습니다.');
-      const updatedUser = { ...localUser, username: editUsername, email: editEmail };
-      setLocalUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      // Correctly reload the profile and all associated data
+      await loadUserProfile(); 
+
       setIsEditingProfile(false);
       setEditPassword('');
     } catch (error) {
-      alert('프로필 업데이트 중 오류가 발생했습니다.');
+      const errorMessage = error.response?.data?.message || '프로필 업데이트 중 오류가 발생했습니다.';
+      alert(errorMessage);
     }
   };
 
-  if (isLoadingUser) {
+  if (isLoading) {
     return <p>사용자 정보를 불러오는 중입니다...</p>;
   }
 
@@ -321,7 +297,7 @@ function Mypage() {
           </FormGroup>
           <ButtonGroup>
             <Button onClick={handleUpdateProfile}>저장</Button>
-            <Button onClick={handleEditToggle}>취소</Button>
+            <Button onClick={() => setIsEditingProfile(false)}>취소</Button>
           </ButtonGroup>
         </div>
       ) : (
@@ -333,7 +309,7 @@ function Mypage() {
           </UserInfo>
           {isOwner && (
             <ButtonGroup>
-              <Button onClick={handleEditToggle}>정보 수정</Button>
+              <Button onClick={() => setIsEditingProfile(true)}>정보 수정</Button>
               <Button onClick={handleLogout}>로그아웃</Button>
               <WithdrawButton onClick={handleWithdraw}>회원 탈퇴</WithdrawButton>
             </ButtonGroup>
@@ -344,12 +320,9 @@ function Mypage() {
       <ScheduleContainer>
         <ScheduleSection>
           <h2>{paramUserId ? '작성한 여행 계획' : '내 여행 계획'}</h2>
-          {loadingSchedules && <p>여행 계획을 불러오는 중...</p>}
-          {scheduleError && <p style={{ color: 'red' }}>{scheduleError}</p>}
-          {!loadingSchedules && !scheduleError && mySchedules.length === 0 && (
+          {mySchedules.length === 0 ? (
             <p>아직 작성된 여행 계획이 없습니다.</p>
-          )}
-          {!loadingSchedules && !scheduleError && mySchedules.length > 0 && (
+          ) : (
             mySchedules.map((schedule) => (
               <ScheduleItem key={schedule.id}>
                 <div onClick={() => navigate(`/schedule/${schedule.id}`)}>
@@ -357,7 +330,10 @@ function Mypage() {
                   <p>날짜: {schedule.date}</p>
                 </div>
                 {isOwner && (
-                  <Button onClick={() => handleDeleteSchedule(schedule.id)}>삭제</Button>
+                  <ButtonGroup>
+                    <Button onClick={() => handleShare(schedule.id)}>공유</Button>
+                    <Button onClick={() => handleDeleteSchedule(schedule.id)}>삭제</Button>
+                  </ButtonGroup>
                 )}
               </ScheduleItem>
             ))
@@ -366,25 +342,18 @@ function Mypage() {
 
         <ScheduleSection>
           <h2>내가 공유한 여행 계획</h2>
-          {loadingSharedSchedules && <p>공유한 여행 계획을 불러오는 중...</p>}
-          {sharedScheduleError && <p style={{ color: 'red' }}>{sharedScheduleError}</p>}
-          {!loadingSharedSchedules && !sharedScheduleError && sharedSchedules.length === 0 && (
+          {sharedSchedules.length === 0 ? (
             <p>아직 공유한 여행 계획이 없습니다.</p>
-          )}
-          {!loadingSharedSchedules && !sharedScheduleError && sharedSchedules.length > 0 && (
+          ) : (
             sharedSchedules.map((schedule) => (
-              <ScheduleItem key={schedule.id}>
-                <div onClick={() => navigate(`/schedule/${schedule.id}`)}>
-                  <h3>{schedule.title || '제목 없음'}</h3>
-                  <p>날짜: {schedule.date}</p>
-                </div>
-                {/* 공유한 여행은 삭제 권한 없다고 가정 */}
+              <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}`)}>
+                <h3>{schedule.title || '제목 없음'}</h3>
+                <p>날짜: {schedule.date}</p>
               </ScheduleItem>
             ))
           )}
         </ScheduleSection>
       </ScheduleContainer>
-
     </MypageContainer>
   );
 }

@@ -45,6 +45,19 @@ const PlaceItem = styled.li`
   }
 `;
 
+const AddButton = styled.button`
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  &:hover {
+    background-color: #218838;
+  }
+`;
+
 const PlaceName = styled.span`
   font-weight: 600;
   color: #333;
@@ -55,13 +68,18 @@ const PlaceAddress = styled.span`
   color: #666;
 `;
 
-const ScheduleResult = ({ schedule, onPlaceClick, selectedPlaceId, onFilteredPlacesChange }) => {
+const ScheduleResult = ({ schedule, onPlaceClick, selectedPlaceId, onFilteredPlacesChange, onAddPlace }) => {
   const [mainCategory, setMainCategory] = useState("여행");
   const [subCategory, setSubCategory] = useState(null);
 
   // 1) 카테고리별로 분리 및 파싱
   const parsedPlaces = useMemo(() => {
-    return (schedule?.places || []).map((place) => {
+    const placesToMap = schedule?.places;
+    if (!Array.isArray(placesToMap)) {
+        console.warn("schedule.places is not an array:", placesToMap);
+        return []; // Return an empty array if not an array
+    }
+    return placesToMap.map((place) => {
       const parts = place.category?.split(" > ") || ["기타"];
       return {
         ...place,
@@ -124,12 +142,14 @@ const ScheduleResult = ({ schedule, onPlaceClick, selectedPlaceId, onFilteredPla
             key={p.id}
             onClick={() => onPlaceClick(p.id)}
             selected={selectedPlaceId === p.id}
-            title={`${p.name}\n${p.address}`}
+            title={`${p.name}
+${p.address}`}
           >
             <div>
               <PlaceName>{p.name}</PlaceName><br />
               <PlaceAddress>{p.address}</PlaceAddress>
             </div>
+            <AddButton onClick={(e) => { e.stopPropagation(); onAddPlace(p); }}>일정 추가</AddButton>
           </PlaceItem>
         ))}
       </PlaceList>

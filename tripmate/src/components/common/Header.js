@@ -49,12 +49,12 @@ function Header() {
         <HeaderBlock>
             <Logo to="/">TripMate</Logo>
             <NavLinks>
-                <Link to="/travel">여행지</Link>
+                <Link to="/travel">공유 여행지</Link>
                 {user ? (
                     <>
                      <Link to="/" onClick={handleLogout}>로그아웃</Link>
                     <Link to={`/user/${user.userId}`}>마이페이지</Link>
-                    <Link to={'/my-schedule'}>내 일정</Link>
+                    <Link to={'/my-schedule'}>일정 생성</Link>
                     </>
                    
                 ) : (
