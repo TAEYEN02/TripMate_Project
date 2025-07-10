@@ -52,6 +52,15 @@ public class Schedule {
 
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Photo> photos = new ArrayList<>();
+
+    @Column(name = "likes", nullable = false)
+    private int likes = 0;
+
+    @Column(name = "dislikes", nullable = false)
+    private int dislikes = 0;
+
+    @Column(name = "shared", nullable = false)
+    private int shared = 0;
     
 
 }

@@ -43,7 +43,7 @@ const iconMap = {
 
 };
 
-const ScheduleMapComponent = ({ dailyPlan, selectedDate, selectedPlace, onCloseInfo }) => {
+const ScheduleMapComponent = ({ dailyPlan, selectedDate, selectedPlace, onSelectPlace, onCloseInfo }) => {
     const places = selectedDate ? dailyPlan[selectedDate] || [] : [];
 
     // 경로용 path 배열 생성 (lat/lng 혹은 latitude/longitude 모두 처리)
@@ -73,12 +73,12 @@ const ScheduleMapComponent = ({ dailyPlan, selectedDate, selectedPlace, onCloseI
                             size: { width: 40, height: 40 },
                             options: { anchor: { x: 20, y: 40 } },
                         }}
-                        onClick={() => onCloseInfo && onCloseInfo(null)} // 선택 해제용 (필요 시)
+                        onClick={() => onSelectPlace(place)}
                     />
                 ))}
 
                 {selectedPlace && (
-                    <MapMarker position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}>
+                    <MapMarker position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }} zIndex={100}>
                         <InfoWindow>
                             <CloseButton onClick={onCloseInfo}>×</CloseButton>
                             <h4 style={{ margin: "0 0 8px 0" }}>{selectedPlace.name}</h4>

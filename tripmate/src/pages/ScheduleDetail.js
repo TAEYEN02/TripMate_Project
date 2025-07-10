@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useNavigate,useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { updateSchedule } from '../api/UserApi';
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
-import MapComponent from '../components/map/ScheduleMapComponent';
-import ReviewForm from '../components/ReviewForm';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { v4 as uuidv4 } from 'uuid';
+import { FaThumbsUp, FaThumbsDown, FaShareSquare } from 'react-icons/fa';
+import ScheduleMapComponent from '../components/map/ScheduleMapComponent';
 import PlaceSearchBar from '../components/schedule/PlaceSearchBar';
 import { Button } from '../components/common/StyledComponents';
 
@@ -122,32 +123,51 @@ const DayTab = styled.button`
   background-color: transparent;
   cursor: pointer;
   font-size: 1rem;
-  color: ${props => (props.active ? '#007bff' : '#666')};
-  border-bottom: ${props => (props.active ? '2px solid #007bff' : '2px solid transparent')};
+  color: ${props => (props.$active ? '#007bff' : '#666')};
+  border-bottom: ${props => (props.$active ? '2px solid #007bff' : '2px solid transparent')};
   margin-bottom: -2px;
 `;
 
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+`;
+
+const ActionButton = styled.button`
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  
+  &:hover {
+    background-color: #f0f0f0;
+  }
+`;
 
 // --- Edit Modal Component ---
-const TRANSPORT_OPTIONS = ['KTX', 'Bus', 'Car', 'Airplane', 'Walk'];
-
 function getDates(startDate, endDate) {
-    const dates = [];
-    let currentDate = dayjs(startDate);
-    const lastDate = dayjs(endDate);
-    while (currentDate.isBefore(lastDate) || currentDate.isSame(lastDate)) {
-        dates.push(currentDate.format('YYYY-MM-DD'));
-        currentDate = currentDate.add(1, 'day');
-    }
-    return dates;
+  const dates = [];
+  let currentDate = dayjs(startDate);
+  const lastDate = dayjs(endDate);
+  while (currentDate.isBefore(lastDate) || currentDate.isSame(lastDate)) {
+    dates.push(currentDate.format('YYYY-MM-DD'));
+    currentDate = currentDate.add(1, 'day');
+  }
+  return dates;
 }
-
-
 
 function ScheduleEditModal({ schedule, onClose, onSave }) {
   const [editableSchedule, setEditableSchedule] = useState(() => {
     const sanitizedPlaces = (schedule.places || []).map(place => ({
       ...place,
+      id: place.id || uuidv4(), // Ensure unique ID
       date: place.date ? dayjs(place.date).format('YYYY-MM-DD') : dayjs(schedule.startDate).format('YYYY-MM-DD')
     }));
     return {
@@ -170,7 +190,7 @@ function ScheduleEditModal({ schedule, onClose, onSave }) {
     } else if (tripDates.length === 0) {
       setSelectedDate(null);
     }
-  }, [tripDates]); // Removed selectedDate from dependency array
+  }, [tripDates, selectedDate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -178,7 +198,7 @@ function ScheduleEditModal({ schedule, onClose, onSave }) {
   };
 
   const handlePlaceAdd = (place) => {
-    const newPlace = { ...place, date: selectedDate };
+    const newPlace = { ...place, id: uuidv4(), date: selectedDate };
     const currentPlaces = editableSchedule.places || [];
     if (currentPlaces.find(p => p.name === newPlace.name && p.address === newPlace.address && p.date === newPlace.date)) {
       alert("이미 해당 날짜에 추가된 장소입니다.");
@@ -188,7 +208,7 @@ function ScheduleEditModal({ schedule, onClose, onSave }) {
   };
 
   const removePlace = (placeToRemove) => {
-    const newPlaces = editableSchedule.places.filter(p => p !== placeToRemove);
+    const newPlaces = editableSchedule.places.filter(p => p.id !== placeToRemove.id);
     setEditableSchedule(prev => ({ ...prev, places: newPlaces }));
   };
 
@@ -202,44 +222,80 @@ function ScheduleEditModal({ schedule, onClose, onSave }) {
     }
   };
 
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const { source, destination } = result;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+      return;
+    }
+
+    const date = source.droppableId;
+    const placesForDate = editableSchedule.places.filter(p => p.date === date);
+    const otherPlaces = editableSchedule.places.filter(p => p.date !== date);
+
+    const [movedPlace] = placesForDate.splice(source.index, 1);
+    placesForDate.splice(destination.index, 0, movedPlace);
+
+    const newPlaces = [...otherPlaces, ...placesForDate];
+    setEditableSchedule(prev => ({ ...prev, places: newPlaces }));
+  };
+
   return (
     <ModalBackground onClick={onClose}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
         <h2>일정 수정</h2>
-        {/* General Info */}
         <FormGroup>
           <label>제목</label>
           <input name="title" value={editableSchedule.title || ''} onChange={handleChange} />
         </FormGroup>
         <div style={{ display: 'flex', gap: '1rem' }}>
-            <FormGroup style={{ flex: 1 }}>
-                <label>여행 시작일</label>
-                <input name="startDate" type="date" value={editableSchedule.startDate || ''} onChange={handleChange} />
-            </FormGroup>
-            <FormGroup style={{ flex: 1 }}>
-                <label>여행 종료일</label>
-                <input name="endDate" type="date" value={editableSchedule.endDate || ''} onChange={handleChange} />
-            </FormGroup>
+          <FormGroup style={{ flex: 1 }}>
+            <label>여행 시작일</label>
+            <input name="startDate" type="date" value={editableSchedule.startDate || ''} onChange={handleChange} />
+          </FormGroup>
+          <FormGroup style={{ flex: 1 }}>
+            <label>여행 종료일</label>
+            <input name="endDate" type="date" value={editableSchedule.endDate || ''} onChange={handleChange} />
+          </FormGroup>
         </div>
-        {/* Places by Day */}
         <hr style={{ margin: '1rem 0' }} />
         <h3>장소 관리</h3>
         <DayTabs>
-            {tripDates.map((date, index) => (
-                <DayTab key={date} active={selectedDate === date} onClick={() => setSelectedDate(date)}>
-                    Day {index + 1}
-                </DayTab>
-            ))}
+          {tripDates.map((date, index) => (
+            <DayTab key={date} $active={selectedDate === date} onClick={() => setSelectedDate(date)}>
+              Day {index + 1}
+            </DayTab>
+          ))}
         </DayTabs>
         <PlaceSearchBar onPlaceSelect={handlePlaceAdd} />
-        <div style={{ marginTop: '1rem' }}>
-          {(editableSchedule.places || []).filter(p => p.date === selectedDate).map((place, index) => (
-            <PlaceListItem key={`${place.name}-${place.address}-${place.date}-${index}`}>
-              <span>{place.name} ({place.address})</span>
-              <Button onClick={() => removePlace(place)} style={{ backgroundColor: '#ff6b6b' }}>삭제</Button>
-            </PlaceListItem>
-          ))}
-        </div>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId={selectedDate}>
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                style={{ marginTop: '1rem', minHeight: '50px' }}
+              >
+                {(editableSchedule.places || []).filter(p => p.date === selectedDate).map((place, index) => (
+                  <Draggable key={place.id} draggableId={place.id} index={index}>
+                    {(provided) => (
+                      <PlaceListItem
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                      >
+                        <span>{place.name} ({place.address})</span>
+                        <Button onClick={() => removePlace(place)} style={{ backgroundColor: '#ff6b6b' }}>삭제</Button>
+                      </PlaceListItem>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
           <Button onClick={onClose} style={{ backgroundColor: '#6c757d' }}>취소</Button>
@@ -272,14 +328,15 @@ function ScheduleDetailFull() {
   const location = useLocation();
   const fromMypage = new URLSearchParams(location.search).get('fromMypage') === 'true';
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reviews, setReviews] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+   const [selectedPlace, setSelectedPlace] = useState(null);
 
   // fromMypage일 때 localStorage에서 우선 불러오기
   useEffect(() => {
@@ -320,6 +377,9 @@ function ScheduleDetailFull() {
         startDate: rawData.startDate || dayjs().format('YYYY-MM-DD'),
         endDate: rawData.endDate || rawData.startDate || dayjs().format('YYYY-MM-DD'),
         places: rawData.places || [],
+        likes: rawData.likes || 0,
+        dislikes: rawData.dislikes || 0,
+        shared: rawData.shared || 0,
       };
       setSchedule(sanitizedSchedule);
       setError(null);
@@ -371,6 +431,42 @@ function ScheduleDetailFull() {
     }
   };
 
+  const handleCopySchedule = async () => {
+    if (!window.confirm("이 일정을 내 일정으로 가져오시겠습니까?")) return;
+    try {
+      await api.post(`/schedule/copy/${id}`);
+      alert("일정을 성공적으로 가져왔습니다!");
+      fetchSchedule(); // Re-fetch to update share count
+      navigate('/my-schedule');
+    } catch (error) {
+      console.error("Failed to copy schedule:", error);
+      alert("일정 가져오기에 실패했습니다.");
+    }
+  };
+
+  const handleLike = async () => {
+    try {
+      const res = await api.post(`/schedule/${id}/like`);
+      setSchedule(prev => ({ ...prev, likes: res.data.likes }));
+      alert("좋아요!");
+    } catch (err) {
+      alert("좋아요 처리에 실패했습니다.");
+      fetchSchedule(); // Revert optimistic update on error
+    }
+  };
+
+  const handleDislike = async () => {
+    try {
+      // This will be enabled once backend is ready
+      const res = await api.post(`/schedule/${id}/dislike`);
+      setSchedule(prev => ({ ...prev, dislikes: res.data.dislikes }));
+      alert("싫어요!");
+    } catch (err) {
+      alert("싫어요 처리에 실패했습니다.");
+      fetchSchedule(); // Revert optimistic update on error
+    }
+  };
+
   const isOwner = user && schedule && schedule.userId === user.userId;
 
   // 저장된 일정 수정 핸들러 (fromMypage)
@@ -418,12 +514,16 @@ function ScheduleDetailFull() {
       <Container>
         <LeftSide>
           <MapWrapper>
-            <MapComponent
+            <ScheduleMapComponent
               dailyPlan={dailyPlanForMap}
               selectedDate={selectedDay}
+              selectedPlace={selectedPlace}
+              onSelectPlace={setSelectedPlace}
+              onCloseInfo={() => setSelectedPlace(null)}
             />
           </MapWrapper>
         </LeftSide>
+
         <RightSide>
           <DetailSection>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -441,14 +541,26 @@ function ScheduleDetailFull() {
             </div>
             <p><strong>작성자:</strong> {schedule.username || '알 수 없음'}</p>
             <p><strong>기간:</strong> {schedule.startDate} ~ {schedule.endDate}</p>
-            {isOwner && !fromMypage && (
-              <Button onClick={() => setIsModalOpen(true)}>수정하기</Button>
-            )}
+            
+            <ActionButtons>
+              <ActionButton onClick={handleLike}><FaThumbsUp /> {schedule.likes}</ActionButton>
+              <ActionButton onClick={handleDislike}><FaThumbsDown /> {schedule.dislikes}</ActionButton>
+              <ActionButton><FaShareSquare /> {schedule.shared}</ActionButton>
+            </ActionButtons>
+
+            <div style={{marginTop: '1rem'}}>
+              {isOwner && (
+                <Button onClick={() => setIsModalOpen(true)}>수정하기</Button>
+              )}
+              {!isOwner && user && (
+                <Button onClick={handleCopySchedule} style={{ marginLeft: '0.5rem' }}>내 일정으로 가져오기</Button>
+              )}
+            </div>
           </DetailSection>
 
           <DayTabs>
             {tripDates.map((date, index) => (
-              <DayTab key={date} active={selectedDay === date} onClick={() => setSelectedDay(date)}>
+              <DayTab key={date} $active={selectedDay === date} onClick={() => setSelectedDay(date)}>
                 Day {index + 1} ({date})
               </DayTab>
             ))}
@@ -469,15 +581,6 @@ function ScheduleDetailFull() {
               )}
             </DetailSection>
           )}
-
-          <DetailSection>
-            <h3>리뷰</h3>
-            <ReviewForm
-              scheduleId={id}
-              reviews={reviews}
-              setReviews={setReviews}
-            />
-          </DetailSection>
         </RightSide>
       </Container>
 

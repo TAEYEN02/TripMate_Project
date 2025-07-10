@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,13 +33,17 @@ public class ScheduleDTO {
     private String username;
 
     public static ScheduleDTO fromEntity(Schedule schedule) {
-        List<PlaceDTO> placeDTOs = schedule.getPlaces().stream()
-                .map(PlaceDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<PlaceDTO> placeDTOs = (schedule.getPlaces() != null) ?
+                schedule.getPlaces().stream()
+                        .map(PlaceDTO::fromEntity)
+                        .collect(Collectors.toList()) :
+                Collections.emptyList(); // Return empty list if null
 
-        List<ReviewDTO> reviewDTOs = schedule.getReviews().stream()
-                .map(ReviewDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<ReviewDTO> reviewDTOs = (schedule.getReviews() != null) ?
+                schedule.getReviews().stream()
+                        .map(ReviewDTO::fromEntity)
+                        .collect(Collectors.toList()) :
+                Collections.emptyList(); // Return empty list if null
 
         String userId = schedule.getUser() != null ? schedule.getUser().getUserId() : null;
         String username = schedule.getUser() != null ? schedule.getUser().getUsername() : "알 수 없음";

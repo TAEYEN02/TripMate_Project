@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import ScheduleForm from "../components/schedule/ScheduleForm";
 import MultiDayScheduleResult from "../components/schedule/MultiDayScheduleResult";
-import MapComponent from "../components/map/ScheduleMapComponent";
+import ScheduleMapComponent from "../components/map/ScheduleMapComponent";
 import { fetchRecommendedPlaces, generateMultiSchedule } from "../api/scheduleApi";
 
 const Container = styled.div`
@@ -140,7 +140,7 @@ const SchedulePage = ({
                     />
                 </FormBox>
                 <MapBox>
-                    <MapComponent
+                    <ScheduleMapComponent
                         dailyPlan={schedule?.dailyPlan || {}}
                         selectedDate={selectedDate}
                         selectedPlace={selectedPlace}
