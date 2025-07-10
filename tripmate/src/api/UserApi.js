@@ -109,6 +109,7 @@ export const updateSchedule = async (scheduleId, scheduleData) => {
         const response = await api.put(`/schedule/${scheduleId}`, scheduleData, {
             headers: {
                 Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
             },
         });
         return response.data;
