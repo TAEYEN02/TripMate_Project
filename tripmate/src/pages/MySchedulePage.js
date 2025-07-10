@@ -32,6 +32,10 @@ const PageContainer = styled.div`
 const LeftMap = styled.div`
   flex: 1;
   margin-right: 1rem;
+  height: 100%; // 추가: 높이 100%로
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 `;
 
 const RightList = styled.div`
@@ -492,7 +496,7 @@ const MySchedulePage = () => {
         <PageContainer>
             <LeftMap>
                 <PlaceSearchBar onPlaceSelect={addCustomPlace} />
-                <div style={{ width: '1250px', height: '1065px', margin: '0 auto' }}>
+                <div style={{ width: '100%', height: '100%', flex: 1 }}>
                   <MapComponent
                       dailyPlan={schedule?.dailyPlan || {}}
                       selectedDate={selectedDate}

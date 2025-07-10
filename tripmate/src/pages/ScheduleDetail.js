@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { updateSchedule } from '../api/UserApi';
@@ -250,22 +250,70 @@ function ScheduleEditModal({ schedule, onClose, onSave }) {
   );
 }
 
+function saveScheduleToLocal(schedule) {
+  if (!schedule || !schedule.id) return;
+  try {
+    const key = 'mySavedSchedules';
+    const prev = JSON.parse(localStorage.getItem(key) || '[]');
+    if (prev.find(s => String(s.id) === String(schedule.id))) {
+      alert('이미 저장된 여행 계획입니다.');
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify([...prev, schedule]));
+    alert('여행 계획이 내 여행계획에 저장되었습니다!');
+  } catch {
+    alert('저장 중 오류가 발생했습니다.');
+  }
+}
+
 // --- Main Detail Component ---
 function ScheduleDetailFull() {
   const { id } = useParams();
+  const location = useLocation();
+  const fromMypage = new URLSearchParams(location.search).get('fromMypage') === 'true';
   const { user } = useAuth();
-  
+
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // fromMypage일 때 localStorage에서 우선 불러오기
+  useEffect(() => {
+    if (fromMypage) {
+      const savedArr = JSON.parse(localStorage.getItem('mySavedSchedules') || '[]');
+      const found = savedArr.find(s => String(s.id) === String(id));
+      if (found) {
+        setSchedule(found);
+        setError(null);
+        setLoading(false);
+        // 날짜 탭 세팅
+        const dailyPlanForMap = (found.places || []).reduce((acc, place) => {
+          const date = place.date || found.startDate;
+          if (!acc[date]) acc[date] = [];
+          acc[date].push(place);
+          return acc;
+        }, {});
+        const initialTripDates = Object.keys(dailyPlanForMap).sort();
+        if (initialTripDates.length > 0) {
+          setSelectedDay(initialTripDates[0]);
+        }
+        return;
+      }
+    }
+    // 없으면 서버에서 불러오기
+    fetchSchedule();
+    // eslint-disable-next-line
+  }, [id, fromMypage]);
 
   const fetchSchedule = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/schedule/${id}`);
+      // 캐시 우회를 위해 쿼리스트링 추가
+      const res = await api.get(`/schedule/${id}?t=${Date.now()}`);
       const rawData = res.data;
       const sanitizedSchedule = {
         ...rawData,
@@ -296,14 +344,27 @@ function ScheduleDetailFull() {
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchSchedule();
-  }, [fetchSchedule]);
-
   const handleUpdateSchedule = async (dataToSave) => {
     try {
-      await updateSchedule(id, dataToSave);
-      fetchSchedule();
+      // places와 dailyPlan 동기화
+      let places = dataToSave.places;
+      let dailyPlan = {};
+      if (places && Array.isArray(places)) {
+        places.forEach(place => {
+          const date = place.date || dataToSave.startDate;
+          if (!dailyPlan[date]) dailyPlan[date] = [];
+          dailyPlan[date].push(place);
+        });
+      }
+      const scheduleToSave = {
+        ...dataToSave,
+        places,
+        dailyPlan,
+      };
+      console.log('PUT /schedule/', id, '보내는 데이터:', scheduleToSave);
+      const resp = await updateSchedule(id, scheduleToSave);
+      console.log('서버 응답:', resp);
+      fetchSchedule(); // 서버에서 최신 데이터 받아오기
     } catch (error) {
       console.error('Error updating schedule:', error);
       alert('스케줄 업데이트에 실패했습니다.');
@@ -311,6 +372,31 @@ function ScheduleDetailFull() {
   };
 
   const isOwner = user && schedule && schedule.userId === user.userId;
+
+  // 저장된 일정 수정 핸들러 (fromMypage)
+  const handleSaveEditedSchedule = (editedSchedule) => {
+    // places와 dailyPlan 동기화
+    let places = editedSchedule.places;
+    let dailyPlan = {};
+    if (places && Array.isArray(places)) {
+      places.forEach(place => {
+        const date = place.date || editedSchedule.startDate;
+        if (!dailyPlan[date]) dailyPlan[date] = [];
+        dailyPlan[date].push(place);
+      });
+    }
+    const scheduleToSave = {
+      ...editedSchedule,
+      places,
+      dailyPlan,
+    };
+    const key = 'mySavedSchedules';
+    const prev = JSON.parse(localStorage.getItem(key) || '[]');
+    const updated = prev.map(s => String(s.id) === String(scheduleToSave.id) ? scheduleToSave : s);
+    localStorage.setItem(key, JSON.stringify(updated));
+    setEditModalOpen(false);
+    setSchedule(scheduleToSave);
+  };
 
   if (loading) return <p>로딩 중...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
@@ -340,10 +426,22 @@ function ScheduleDetailFull() {
         </LeftSide>
         <RightSide>
           <DetailSection>
-            <Title>{schedule.title || '제목 없음'}</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title>{schedule.title || '제목 없음'}</Title>
+              {!fromMypage && (
+                <Button onClick={() => saveScheduleToLocal(schedule)} style={{ background: '#2563eb', color: 'white' }}>
+                  내 여행계획에 저장하기
+                </Button>
+              )}
+              {fromMypage && (
+                <Button onClick={() => setEditModalOpen(true)} style={{ background: '#2563eb', color: 'white', marginLeft: 8 }}>
+                  수정하기
+                </Button>
+              )}
+            </div>
             <p><strong>작성자:</strong> {schedule.username || '알 수 없음'}</p>
             <p><strong>기간:</strong> {schedule.startDate} ~ {schedule.endDate}</p>
-            {isOwner && (
+            {isOwner && !fromMypage && (
               <Button onClick={() => setIsModalOpen(true)}>수정하기</Button>
             )}
           </DetailSection>
@@ -388,6 +486,13 @@ function ScheduleDetailFull() {
           schedule={schedule}
           onClose={() => setIsModalOpen(false)}
           onSave={handleUpdateSchedule}
+        />
+      )}
+      {editModalOpen && fromMypage && (
+        <ScheduleEditModal
+          schedule={schedule}
+          onClose={() => setEditModalOpen(false)}
+          onSave={handleSaveEditedSchedule}
         />
       )}
     </>

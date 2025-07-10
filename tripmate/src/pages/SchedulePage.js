@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import ScheduleForm from "../components/schedule/ScheduleForm";
 import MultiDayScheduleResult from "../components/schedule/MultiDayScheduleResult";
@@ -69,6 +69,16 @@ const SchedulePage = ({
 
     const [filteredPlaces, setFilteredPlaces] = useState([]);
     const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+
+    // 일정이 생성되면 첫 번째 날짜를 자동 선택
+    useEffect(() => {
+        if (schedule && schedule.dailyPlan) {
+            const dates = Object.keys(schedule.dailyPlan);
+            if (dates.length > 0) {
+                setSelectedDate(dates[0]);
+            }
+        }
+    }, [schedule]);
 
     const handleGenerate = async (formData) => {
         setLoading(true);

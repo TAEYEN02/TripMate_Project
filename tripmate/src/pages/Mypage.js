@@ -4,10 +4,11 @@ import styled from 'styled-components';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/index';
 import { fetchSchedules, fetchSharedSchedules, fetchUserProfile, shareSchedule } from '../api/UserApi';
+import ScheduleEditModal from './ScheduleDetail'; // ScheduleEditModal을 import (export 필요)
 
 // Styled Components (omitted for brevity, they are correct)
 const MypageContainer = styled.div`
-  max-width: 600px;
+  max-width: 1000px;
   margin: 2rem auto;
   padding: 2rem;
   border: 1px solid #e9ecef;
@@ -107,7 +108,7 @@ const FormGroup = styled.div`
 const ScheduleContainer = styled.div`
   display: flex;
   gap: 2rem;
-  margin-top: 2rem;
+  margin-top: 0.5rem;
 `;
 
 const ScheduleSection = styled.div`
@@ -118,6 +119,43 @@ const ScheduleSection = styled.div`
   background-color: #fafafa;
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+`;
+const TabButton = styled.button`
+  padding: 0.7rem 2rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: ${(props) => (props.active ? '#2563eb' : '#e9ecef')};
+  color: ${(props) => (props.active ? 'white' : '#333')};
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid ${(props) => (props.active ? '#2563eb' : 'transparent')};
+`;
+
+const getLocalSavedSchedule = () => {
+  try {
+    const saved = localStorage.getItem('mySchedule');
+    if (saved) return JSON.parse(saved);
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const getLocalSavedSchedules = () => {
+  try {
+    const arr = localStorage.getItem('mySavedSchedules');
+    if (arr) return JSON.parse(arr);
+    return [];
+  } catch {
+    return [];
+  }
+};
 
 function Mypage() {
   const { user, logout } = useAuth();
@@ -135,6 +173,11 @@ function Mypage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('my'); // 'my', 'shared', 'saved'
+  const [localSavedSchedule, setLocalSavedSchedule] = useState(getLocalSavedSchedule());
+  const [localSavedSchedules, setLocalSavedSchedules] = useState(getLocalSavedSchedules());
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editTargetSchedule, setEditTargetSchedule] = useState(null);
 
   const fetchAllData = useCallback(async (currentUser) => {
     if (!currentUser) return;
@@ -178,6 +221,13 @@ function Mypage() {
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
+
+  // localStorage 변경 감지(탭 전환 시 최신화)
+  useEffect(() => {
+    if (activeTab === 'saved') {
+      setLocalSavedSchedules(getLocalSavedSchedules());
+    }
+  }, [activeTab]);
 
   const isOwner = user && localUser && String(user.userId || user.id) === String(localUser.userId);
 
@@ -246,6 +296,20 @@ function Mypage() {
       const errorMessage = error.response?.data?.message || '프로필 업데이트 중 오류가 발생했습니다.';
       alert(errorMessage);
     }
+  };
+
+  // 저장된 일정 수정 핸들러
+  const handleEditSavedSchedule = (schedule) => {
+    setEditTargetSchedule(schedule);
+    setEditModalOpen(true);
+  };
+  // 저장 후 localStorage 업데이트
+  const handleSaveEditedSchedule = (editedSchedule) => {
+    const prev = getLocalSavedSchedules();
+    const updated = prev.map(s => String(s.id) === String(editedSchedule.id) ? editedSchedule : s);
+    localStorage.setItem('mySavedSchedules', JSON.stringify(updated));
+    setLocalSavedSchedules(updated);
+    setEditModalOpen(false);
   };
 
   if (isLoading) {
@@ -317,42 +381,83 @@ function Mypage() {
         </>
       )}
 
+      <TabContainer>
+        <TabButton active={activeTab === 'my'} onClick={() => setActiveTab('my')}>
+          작성한 여행 계획
+        </TabButton>
+        <TabButton active={activeTab === 'shared'} onClick={() => setActiveTab('shared')}>
+          내가 공유한 여행 계획
+        </TabButton>
+        <TabButton active={activeTab === 'saved'} onClick={() => setActiveTab('saved')}>
+          내가 저장한 여행 계획
+        </TabButton>
+      </TabContainer>
       <ScheduleContainer>
-        <ScheduleSection>
-          <h2>{paramUserId ? '작성한 여행 계획' : '내 여행 계획'}</h2>
-          {mySchedules.length === 0 ? (
-            <p>아직 작성된 여행 계획이 없습니다.</p>
-          ) : (
-            mySchedules.map((schedule) => (
-              <ScheduleItem key={schedule.id}>
-                <div onClick={() => navigate(`/schedule/${schedule.id}`)}>
+        {activeTab === 'my' && (
+          <ScheduleSection>
+            <h2>{paramUserId ? '작성한 여행 계획' : '내 여행 계획'}</h2>
+            {mySchedules.length === 0 ? (
+              <p>아직 작성된 여행 계획이 없습니다.</p>
+            ) : (
+              mySchedules.map((schedule) => (
+                <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
+                  <div>
+                    <h3>{schedule.title || '제목 없음'}</h3>
+                    <p>날짜: {schedule.date}</p>
+                  </div>
+                  {isOwner && (
+                    <ButtonGroup>
+                      <Button onClick={(e) => { e.stopPropagation(); handleShare(schedule.id); }}>공유</Button>
+                      <Button onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule.id); }}>삭제</Button>
+                    </ButtonGroup>
+                  )}
+                </ScheduleItem>
+              ))
+            )}
+          </ScheduleSection>
+        )}
+        {activeTab === 'shared' && (
+          <ScheduleSection>
+            <h2>내가 공유한 여행 계획</h2>
+            {sharedSchedules.length === 0 ? (
+              <p>아직 공유한 여행 계획이 없습니다.</p>
+            ) : (
+              sharedSchedules.map((schedule) => (
+                <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
                   <h3>{schedule.title || '제목 없음'}</h3>
                   <p>날짜: {schedule.date}</p>
-                </div>
-                {isOwner && (
-                  <ButtonGroup>
-                    <Button onClick={() => handleShare(schedule.id)}>공유</Button>
-                    <Button onClick={() => handleDeleteSchedule(schedule.id)}>삭제</Button>
-                  </ButtonGroup>
-                )}
-              </ScheduleItem>
-            ))
-          )}
-        </ScheduleSection>
-
-        <ScheduleSection>
-          <h2>내가 공유한 여행 계획</h2>
-          {sharedSchedules.length === 0 ? (
-            <p>아직 공유한 여행 계획이 없습니다.</p>
-          ) : (
-            sharedSchedules.map((schedule) => (
-              <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}`)}>
-                <h3>{schedule.title || '제목 없음'}</h3>
-                <p>날짜: {schedule.date}</p>
-              </ScheduleItem>
-            ))
-          )}
-        </ScheduleSection>
+                </ScheduleItem>
+              ))
+            )}
+          </ScheduleSection>
+        )}
+        {activeTab === 'saved' && (
+          <ScheduleSection>
+            <h2>내가 저장한 여행 계획</h2>
+            {localSavedSchedules.length === 0 ? (
+              <p>아직 저장한 여행 계획이 없습니다.</p>
+            ) : (
+              localSavedSchedules.map((schedule) => (
+                <ScheduleItem key={schedule.id}>
+                  <div onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)} style={{ cursor: 'pointer' }}>
+                    <h3>{schedule.title || '제목 없음'}</h3>
+                    <p>출발지: {schedule.departure}</p>
+                    <p>도착지: {schedule.arrival}</p>
+                    <p>여행 시작일: {schedule.startDate || schedule.date}</p>
+                    <p>여행 기간: {schedule.days}일</p>
+                  </div>
+                </ScheduleItem>
+              ))
+            )}
+            {editModalOpen && editTargetSchedule && (
+              <ScheduleEditModal
+                schedule={editTargetSchedule}
+                onClose={() => setEditModalOpen(false)}
+                onSave={handleSaveEditedSchedule}
+              />
+            )}
+          </ScheduleSection>
+        )}
       </ScheduleContainer>
     </MypageContainer>
   );
