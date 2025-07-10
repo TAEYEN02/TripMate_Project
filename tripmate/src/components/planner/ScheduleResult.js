@@ -37,9 +37,8 @@ const PlaceItem = styled.li`
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  border: ${(props) => (props.selected ? "2px solid #4caf50" : "none")};
-  transition: border 0.2s ease;
-
+  border: ${(props) => (props.selected ? "2.5px solid #4caf50" : "1.5px solid #eee")};
+  transition: border 0.2s;
   &:hover {
     background: #e8f5e9;
   }

@@ -98,6 +98,7 @@ const MultiDayScheduleResult = ({ schedule, selectedDate, setSelectedDate, onPla
               <PlaceImage
                 src={place.photoUrl || "https://via.placeholder.com/250x140?text=No+Image"}
                 alt={place.name}
+                onError={e => e.target.src = '/icons/tourist.png'}
               />
               <PlaceName>{place.name}</PlaceName>
               <Category>{place.category}</Category>

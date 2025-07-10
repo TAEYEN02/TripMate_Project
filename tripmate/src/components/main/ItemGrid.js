@@ -13,7 +13,7 @@ function ItemGrid() {
     <div className="item-grid">
       {items.map((item, idx) => (
         <div key={idx} className="grid-item">
-          <img src={item.img} alt={item.title} />
+          <img src={process.env.PUBLIC_URL + '/icons/' + (item.img || 'tourist.png')} alt={item.title} onError={e => e.target.src = process.env.PUBLIC_URL + '/icons/tourist.png'} />
           <p>{item.title}</p>
         </div>
       ))}

@@ -27,3 +27,4 @@ spring:
 app:
   jwtSecret: "z1X9F4pLq2NhB8vY7Wq3ReXs9Kw6MfDr7LpCvWxZSaGhJiUkLmNOpQrStUvWxYz1"
   jwtExpirationInMs: 86400000
+

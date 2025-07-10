@@ -83,13 +83,16 @@ public class ScheduleController {
 
     // 새로운 여행지 추천 엔드포인트
     @GetMapping("/places/recommend")
-    public ResponseEntity<List<PlaceDTO>> getRecommendedPlaces(@RequestParam("keyword") String keyword) {
-        try {
-            List<PlaceDTO> recommendedPlaces = scheduleService.getRecommendedPlaces(keyword);
-            return ResponseEntity.ok(recommendedPlaces);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null); // Or a more specific error DTO
+    public ResponseEntity<List<PlaceDTO>> getRecommendedPlaces(
+            @RequestParam("keyword") String keyword,
+            @RequestParam(value = "category", required = false) String category) {
+        List<PlaceDTO> recommendedPlaces;
+        if (category != null) {
+            recommendedPlaces = scheduleService.getRecommendedPlacesByCategory(keyword, category);
+        } else {
+            recommendedPlaces = scheduleService.getRecommendedPlaces(keyword);
         }
+        return ResponseEntity.ok(recommendedPlaces);
     }
 
 	@GetMapping("/shared")

@@ -12,8 +12,10 @@ export const autoGenerateSchedule = async ({ departure, arrival, date, transport
   return response.data; // ScheduleResponse
 };
 
-export const fetchRecommendedPlaces = async (keyword) => {
-  const response = await api.get(`/places/recommend?keyword=${keyword}`);
+export const fetchRecommendedPlaces = async (keyword, category) => {
+  let url = `/schedule/places/recommend?keyword=${keyword}`;
+  if (category) url += `&category=${category}`;
+  const response = await api.get(url);
   return response.data; // List<PlaceDTO>
 };
 

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import styled from "styled-components";
 import { useLocation, useNavigate } from "react-router-dom"; // Added useNavigate
 import MapComponent from "../components/map/ScheduleMapComponent";
 import PlaceSearchBar from "../components/schedule/PlaceSearchBar";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 // import { motion } from "framer-motion";
 import { FaArrowDown } from "react-icons/fa";
 import dayjs from "dayjs";
@@ -12,6 +12,7 @@ import SearchPage from "./SearchPage";
 import SchedulePage from "./SchedulePage";
 import axios from 'axios';
 import { saveSchedule } from "../api/scheduleApi";
+import { v4 as uuidv4 } from 'uuid'; // uuid 추가
 
 const CreateScheduleButton = styled.button`
   background: ${(props) => props.bg || "#4CAF50"};
@@ -188,9 +189,24 @@ const MySchedulePage = () => {
     }, [accommodation, food, other, transportInfo]);
 
 
-    const handlePlaceAddedFromModal = (place) => {
-        addCustomPlace(place);
-        setOpenSearchModal(false); // Close modal after adding
+    // handlePlaceAddedFromModal을 여러 장소 추가로 수정
+    const handlePlaceAddedFromModal = (places) => {
+        if (!Array.isArray(places) || places.length === 0) return;
+        if (!selectedDate) return;
+        setSchedule((prev) => {
+            if (!prev) return prev;
+            const updated = { ...prev };
+            updated.dailyPlan = { ...updated.dailyPlan };
+            updated.dailyPlan[selectedDate] = [
+                ...(updated.dailyPlan[selectedDate] || []),
+                ...places.map(p => ({
+                    ...p,
+                    id: p.id || uuidv4(), // id가 없으면 uuid 부여
+                }))
+            ];
+            return updated;
+        });
+        setOpenSearchModal(false); // 모달 닫기
     };
 
     // 스케줄 추천 모달에서 받은 데이터를 처리하는 함수
@@ -201,16 +217,34 @@ const MySchedulePage = () => {
             return;
         }
 
-        // 기존 스케줄 정보는 유지하면서 dailyPlan만 교체
+        // 기존 dailyPlan 복사
+        const mergedDailyPlan = { ...schedule.dailyPlan };
+
+        // 추천 일정의 각 날짜별로 place를 합침
+        Object.entries(recommendedSchedule.dailyPlan).forEach(([date, places]) => {
+            if (!mergedDailyPlan[date]) {
+                // 기존에 없는 날짜면 새로 추가
+                mergedDailyPlan[date] = [];
+            }
+            // id 보장해서 추가
+            mergedDailyPlan[date] = [
+                ...mergedDailyPlan[date],
+                ...places.map(p => ({
+                    ...p,
+                    id: p.id || uuidv4(),
+                }))
+            ];
+        });
+
         const updatedSchedule = {
             ...schedule,
-            dailyPlan: recommendedSchedule.dailyPlan,
-            places: Object.values(recommendedSchedule.dailyPlan).flat(), // places 목록도 새것으로 업데이트
+            dailyPlan: mergedDailyPlan,
+            places: Object.values(mergedDailyPlan).flat(),
         };
 
         setSchedule(updatedSchedule);
-        localStorage.setItem("mySchedule", JSON.stringify(updatedSchedule)); // localStorage도 업데이트
-        setOpenScheduleModal(false); // 모달 닫기
+        localStorage.setItem("mySchedule", JSON.stringify(updatedSchedule));
+        setOpenScheduleModal(false);
     };
 
     // 4자리 숫자(0630) → 06:30 변환 함수
@@ -297,6 +331,27 @@ const MySchedulePage = () => {
         setHasCreatedSchedule(newHasCreatedSchedule);
     }, [location.state]);
 
+    // 모든 place에 고유 id가 없으면 uuid를 자동 부여
+    useEffect(() => {
+        if (!schedule || !schedule.dailyPlan) return;
+        let changed = false;
+        const newDailyPlan = {};
+        Object.entries(schedule.dailyPlan).forEach(([date, places]) => {
+            newDailyPlan[date] = places.map(p => {
+                if (!p.id) {
+                    changed = true;
+                    return { ...p, id: uuidv4() };
+                }
+                return p;
+            });
+        });
+        if (changed) {
+            const updated = { ...schedule, dailyPlan: newDailyPlan };
+            setSchedule(updated);
+            localStorage.setItem("mySchedule", JSON.stringify(updated));
+        }
+    }, [schedule]);
+
     const addCustomPlace = (place) => {
         if (!selectedDate || !place) return;
 
@@ -323,26 +378,28 @@ const MySchedulePage = () => {
         localStorage.setItem("mySchedule", JSON.stringify(updated));
     };
 
+    const selectedDateRef = useRef(selectedDate);
+    useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
+
     const onDragEnd = (result) => {
         if (!result.destination) return;
         const { source, destination } = result;
-        const updated = { ...schedule };
-
-        const sourceItems = Array.from(updated.dailyPlan[source.droppableId]);
-        const [movedItem] = sourceItems.splice(source.index, 1);
-        updated.dailyPlan[source.droppableId] = sourceItems;
-
-        // 날짜 이동 시 날짜 속성 업데이트
-        if (source.droppableId !== destination.droppableId) {
-            movedItem.date = destination.droppableId;
-        }
-
-        const destItems = Array.from(updated.dailyPlan[destination.droppableId] || []);
-        destItems.splice(destination.index, 0, movedItem);
-        updated.dailyPlan[destination.droppableId] = destItems;
-
-        setSchedule(updated);
-        localStorage.setItem("mySchedule", JSON.stringify(updated));
+        if (source.index === destination.index) return;
+        const dateKey = selectedDateRef.current;
+        setSchedule(prev => {
+            const items = Array.from(prev.dailyPlan[dateKey]);
+            const [moved] = items.splice(source.index, 1);
+            items.splice(destination.index, 0, moved);
+            const updated = {
+                ...prev,
+                dailyPlan: {
+                    ...prev.dailyPlan,
+                    [dateKey]: items,
+                },
+            };
+            localStorage.setItem("mySchedule", JSON.stringify(updated));
+            return updated;
+        });
     };
 
     const moveDate = (direction) => {
@@ -413,16 +470,36 @@ const MySchedulePage = () => {
             alert("일정 저장에 실패했습니다.");
         }
     };
+
+    // 한 칸씩 올리기/내리기 함수 추가
+    const movePlace = (from, to) => {
+        if (!schedule || !selectedDate) return;
+        const items = Array.from(schedule.dailyPlan[selectedDate]);
+        if (to < 0 || to >= items.length) return;
+        const [moved] = items.splice(from, 1);
+        items.splice(to, 0, moved);
+        const updated = {
+            ...schedule,
+            dailyPlan: {
+                ...schedule.dailyPlan,
+                [selectedDate]: items,
+            },
+        };
+        setSchedule(updated);
+        localStorage.setItem("mySchedule", JSON.stringify(updated));
+    };
     return (
         <PageContainer>
             <LeftMap>
                 <PlaceSearchBar onPlaceSelect={addCustomPlace} />
-                <MapComponent
-                    dailyPlan={schedule?.dailyPlan || {}}
-                    selectedDate={selectedDate}
-                    selectedPlace={selectedPlace}
-                    onCloseInfo={() => setSelectedPlace(null)}
-                />
+                <div style={{ width: '1250px', height: '1065px', margin: '0 auto' }}>
+                  <MapComponent
+                      dailyPlan={schedule?.dailyPlan || {}}
+                      selectedDate={selectedDate}
+                      selectedPlace={selectedPlace}
+                      onCloseInfo={() => setSelectedPlace(null)}
+                  />
+                </div>
             </LeftMap>
 
             <RightList>
@@ -437,13 +514,26 @@ const MySchedulePage = () => {
                     <>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h2>내 일정</h2>
-                            <CreateScheduleButton
-                                bg="#2563eb"
-                                $hover="#1e40af"
-                                onClick={handleSaveSchedule}
-                            >
-                                ✨ 일정 저장하고 상세 보기
-                            </CreateScheduleButton>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                                <button
+                                    style={{ marginLeft: 0, padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                                    onClick={() => setOpenSearchModal(true)}
+                                >
+                                    여행지 추천
+                                </button>
+                                <button
+                                    style={{ marginLeft: 8, padding: "8px 16px", borderRadius: 8, background: "#10b981", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                                    onClick={() => setOpenScheduleModal(true)}
+                                >
+                                    스케줄 추천
+                                </button>
+                                <CreateScheduleButton
+                                    style={{ marginLeft: 8, padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                                    onClick={handleSaveSchedule}
+                                >
+                                    ✨ 일정 저장하고 상세 보기
+                                </CreateScheduleButton>
+                            </div>
                         </div>
                         {/* 교통편 정보 표시 */}
                         {transportInfo && (
@@ -498,7 +588,7 @@ const MySchedulePage = () => {
                             </TransportDetail>
                         </TransportInfo>
 
-                        {/* 여행 날짜 선택 버튼 + 추천 버튼 */}
+                        {/* 여행 날짜 선택 바만 표시 (버튼 없음) */}
                         <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
                             <DateSelector>
                                 <NavigationButton onClick={() => moveDate("prev")}>{"<"}</NavigationButton>
@@ -516,40 +606,27 @@ const MySchedulePage = () => {
                                 ))}
                                 <NavigationButton onClick={() => moveDate("next")}>{">"}</NavigationButton>
                             </DateSelector>
-                            <button
-                                style={{ marginLeft: 16, padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
-                                onClick={() => setOpenSearchModal(true)}
-                            >
-                                여행지 추천
-                            </button>
-                            <button
-                                style={{ marginLeft: 8, padding: "8px 16px", borderRadius: 8, background: "#10b981", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
-                                onClick={() => setOpenScheduleModal(true)}
-                            >
-                                스케줄 추천
-                            </button>
                         </div>
 
                         {schedule && selectedDate && (
                             <DragDropContext onDragEnd={onDragEnd}>
-                                <Droppable droppableId={selectedDate} isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
+                                <Droppable droppableId={selectedDate}>
                                     {(provided) => (
-                                        <div {...provided.droppableProps} ref={provided.innerRef}>
+                                        <div
+                                            {...provided.droppableProps}
+                                            ref={provided.innerRef}
+                                            style={{ minHeight: 40, position: 'relative' }}
+                                        >
                                             {(schedule.dailyPlan[selectedDate] || []).map((p, idx) => {
-                                                const id = `${selectedDate}-${idx}`;
-                                                const prevIndex = prevIndexMap[id] ?? idx;
-                                                const direction = idx > prevIndex ? "down" : idx < prevIndex ? "up" : "stay";
-
+                                                if (!p.id) throw new Error('모든 place에는 고유 id가 필요합니다!');
+                                                const dragId = String(p.id);
                                                 return (
-                                                    <Draggable key={id} draggableId={id} index={idx}>
+                                                    <Draggable key={dragId} draggableId={dragId} index={idx}>
                                                         {(provided) => (
                                                             <Item
                                                                 ref={provided.innerRef}
                                                                 {...provided.draggableProps}
                                                                 {...provided.dragHandleProps}
-                                                                initial={{ opacity: 0, y: direction === "down" ? 20 : direction === "up" ? -20 : 0 }}
-                                                                animate={{ opacity: 1, y: 0 }}
-                                                                transition={{ duration: 0.2 }}
                                                                 onMouseEnter={() => setSelectedPlace(p)}
                                                                 onMouseLeave={() => setSelectedPlace(null)}
                                                             >
@@ -583,13 +660,11 @@ const MySchedulePage = () => {
                                                                             <FaArrowDown />
                                                                         </button>
                                                                     )}
-
                                                                     <div>
                                                                         <span>{p.name}</span>
                                                                         <p style={{ fontSize: "small", color: "gray" }}>{p.category}</p>
                                                                     </div>
                                                                 </div>
-
                                                                 <DeleteButton onClick={() => deletePlace(selectedDate, idx)}>
                                                                     삭제
                                                                 </DeleteButton>
@@ -612,6 +687,7 @@ const MySchedulePage = () => {
                         defaultDeparture={transportInfo?.departure}
                         defaultArrival={transportInfo?.arrival}
                         onAddPlace={handlePlaceAddedFromModal}
+                        selectedDate={selectedDate}
                     />
                 </SimpleModal>
                 <SimpleModal open={openScheduleModal} onClose={() => setOpenScheduleModal(false)}>
