@@ -2,7 +2,9 @@ package com.korea.trip.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -103,11 +105,17 @@ public class ScheduleController {
 	}
 
 	@GetMapping("/my-schedules")
-	public ResponseEntity<List<ScheduleDTO>> getMySchedules(@CurrentUser UserPrincipal currentUser) {
-		List<Schedule> schedules = scheduleService.getSchedulesByUserId(currentUser.getId());
-		List<ScheduleDTO> dtos = schedules.stream().map(ScheduleDTO::fromEntity).collect(Collectors.toList());
-		return ResponseEntity.ok(dtos);
+	public ResponseEntity<List<ScheduleDTO>> getMySchedules() {
+	    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	    if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal user)) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+	    }
+
+	    List<Schedule> schedules = scheduleService.getSchedulesByUserId(user.getId());
+	    List<ScheduleDTO> dtos = schedules.stream().map(ScheduleDTO::fromEntity).toList();
+	    return ResponseEntity.ok(dtos);
 	}
+
 
 	@GetMapping("/{id}")
 	public ResponseEntity<ScheduleDTO> getScheduleById(@PathVariable("id") Long id) {
@@ -148,11 +156,25 @@ public class ScheduleController {
 		}
 	}
 
+	@PostMapping("/copy/{id}")
+	public ResponseEntity<ScheduleDTO> copySchedule(@PathVariable("id") Long id, @CurrentUser UserPrincipal currentUser) {
+		try {
+			ScheduleDTO copiedSchedule = scheduleService.copySchedule(id, currentUser.getId());
+			return ResponseEntity.status(HttpStatus.CREATED).body(copiedSchedule);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
 	@GetMapping("/shared/my")
-	public ResponseEntity<List<ScheduleDTO>> getMySharedSchedules(@AuthenticationPrincipal UserPrincipal user) {
-		Long userId = user.getId(); // 로그인된 사용자의 DB PK
-		List<ScheduleDTO> sharedSchedules = scheduleService.getSharedSchedulesByUser(userId);
-		return ResponseEntity.ok(sharedSchedules);
+	public ResponseEntity<List<ScheduleDTO>> getMySharedSchedules() {
+	    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	    if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal user)) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+	    }
+
+	    List<ScheduleDTO> sharedSchedules = scheduleService.getSharedSchedulesByUser(user.getId());
+	    return ResponseEntity.ok(sharedSchedules);
 	}
 
 	@DeleteMapping("/schedule/place/{placeId}")
@@ -166,4 +188,15 @@ public class ScheduleController {
 		}
 	}
 
+	@PostMapping("/{id}/like")
+	public ResponseEntity<ScheduleDTO> likeSchedule(@PathVariable("id") Long id) {
+		Schedule updatedSchedule = scheduleService.likeSchedule(id);
+		return ResponseEntity.ok(ScheduleDTO.fromEntity(updatedSchedule));
+	}
+
+	@PostMapping("/{id}/dislike")
+	public ResponseEntity<ScheduleDTO> dislikeSchedule(@PathVariable("id") Long id) {
+		Schedule updatedSchedule = scheduleService.dislikeSchedule(id);
+		return ResponseEntity.ok(ScheduleDTO.fromEntity(updatedSchedule));
+	}
 }

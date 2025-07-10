@@ -46,6 +46,9 @@ public class Review {
 
     @Column
     private int dislikes = 0;
+    
+    @Column
+    private Integer shared = 0;
 
 //    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL)
 //    private List<MyCommentEntity> comments;

@@ -147,8 +147,29 @@ public class ScheduleService {
 	}
 
 	public List<ScheduleDTO> getSharedSchedulesByUser(Long userId) {
-		List<Schedule> schedules = scheduleRepository.findByUserIdAndIsPublicTrue(userId);
-		return schedules.stream().map(ScheduleDTO::fromEntity).collect(Collectors.toList());
+		System.out.println("Attempting to fetch shared schedules for user ID: " + userId);
+		try {
+			List<Schedule> schedules = scheduleRepository.findByUserIdAndIsPublicTrue(userId);
+			System.out.println("Found " + schedules.size() + " shared schedules for user ID: " + userId);
+			List<ScheduleDTO> dtoList = schedules.stream()
+					.map(schedule -> {
+						try {
+							return ScheduleDTO.fromEntity(schedule);
+						} catch (Exception e) {
+							System.err.println("Error mapping Schedule to ScheduleDTO for schedule ID: " + schedule.getId() + " - " + e.getMessage());
+							e.printStackTrace();
+							return null; // Or throw a specific exception, or log and skip
+						}
+					})
+					.filter(dto -> dto != null) // Filter out any nulls if mapping failed
+					.collect(Collectors.toList());
+			System.out.println("Successfully mapped " + dtoList.size() + " shared schedules to DTOs.");
+			return dtoList;
+		} catch (Exception e) {
+			System.err.println("Error in getSharedSchedulesByUser for user ID: " + userId + " - " + e.getMessage());
+			e.printStackTrace();
+			throw new RuntimeException("Failed to retrieve shared schedules: " + e.getMessage(), e);
+		}
 	}
 
 	// This method might need review if places are now date-specific
@@ -240,5 +261,59 @@ public class ScheduleService {
 
         Schedule saved = scheduleRepository.save(schedule);
         return ScheduleDTO.fromEntity(saved);
+    }
+
+    @Transactional
+    public ScheduleDTO copySchedule(Long originalScheduleId, Long newUserId) {
+        Schedule originalSchedule = scheduleRepository.findById(originalScheduleId)
+            .orElseThrow(() -> new RuntimeException("원본 일정을 찾을 수 없습니다."));
+        
+        User newUser = userRepository.findById(newUserId)
+            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        Schedule newSchedule = new Schedule();
+        newSchedule.setUser(newUser);
+        newSchedule.setTitle("복사본: " + originalSchedule.getTitle());
+        newSchedule.setStartDate(originalSchedule.getStartDate());
+        newSchedule.setEndDate(originalSchedule.getEndDate());
+        newSchedule.setDeparture(originalSchedule.getDeparture());
+        newSchedule.setArrival(originalSchedule.getArrival());
+        newSchedule.setTransportType(originalSchedule.getTransportType());
+        newSchedule.setPublic(false); // 복사된 일정�� 기본적으로 비공개
+
+        if (originalSchedule.getPlaces() != null) {
+            List<Place> newPlaces = originalSchedule.getPlaces().stream().map(originalPlace -> {
+                Place newPlace = new Place();
+                newPlace.setName(originalPlace.getName());
+                newPlace.setAddress(originalPlace.getAddress());
+                newPlace.setLat(originalPlace.getLat());
+                newPlace.setLng(originalPlace.getLng());
+                newPlace.setDate(originalPlace.getDate());
+                newPlace.setCategory(originalPlace.getCategory());
+                newPlace.setImageUrl(originalPlace.getImageUrl());
+                newPlace.setSchedule(newSchedule);
+                return newPlace;
+            }).collect(Collectors.toList());
+            newSchedule.setPlaces(newPlaces);
+        }
+
+        Schedule savedSchedule = scheduleRepository.save(newSchedule);
+        return ScheduleDTO.fromEntity(savedSchedule);
+    }
+
+    @Transactional
+    public Schedule likeSchedule(Long scheduleId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+            .orElseThrow(() -> new RuntimeException("Schedule not found with id " + scheduleId));
+        schedule.setLikes(schedule.getLikes() + 1);
+        return scheduleRepository.save(schedule);
+    }
+
+    @Transactional
+    public Schedule dislikeSchedule(Long scheduleId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+            .orElseThrow(() -> new RuntimeException("Schedule not found with id " + scheduleId));
+        schedule.setDislikes(schedule.getDislikes() + 1);
+        return scheduleRepository.save(schedule);
     }
 }
