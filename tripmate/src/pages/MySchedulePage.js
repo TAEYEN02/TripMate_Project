@@ -496,7 +496,9 @@ const MySchedulePage = () => {
         <PageContainer>
             <LeftMap>
                 <PlaceSearchBar onPlaceSelect={addCustomPlace} />
+
                 <div style={{ width: '100%', height: '100%', flex: 1 }}>
+                  
                   <MapComponent
                       dailyPlan={schedule?.dailyPlan || {}}
                       selectedDate={selectedDate}
