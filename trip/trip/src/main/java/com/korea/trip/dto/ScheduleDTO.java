@@ -31,6 +31,8 @@ public class ScheduleDTO {
 
     private String userId;
     private String username;
+    private boolean isCopied;
+    private Long copiedFromId;
 
     public static ScheduleDTO fromEntity(Schedule schedule) {
         List<PlaceDTO> placeDTOs = (schedule.getPlaces() != null) ?
@@ -62,6 +64,8 @@ public class ScheduleDTO {
                 .reviews(reviewDTOs)
                 .userId(userId)
                 .username(username)
+                .isCopied(schedule.isCopied())
+                .copiedFromId(schedule.getCopiedFromId())
                 .build();
     }
 }

@@ -61,6 +61,13 @@ public class Schedule {
 
     @Column(name = "shared", nullable = false)
     private int shared = 0;
+
+    // 찜한 일정 구분용 필드
+    @Column(name = "is_copied", nullable = false)
+    private boolean isCopied = false;
+
+    @Column(name = "copied_from_id")
+    private Long copiedFromId;
     
 
 }

@@ -91,7 +91,9 @@ public class ScheduleService {
 	}
 
 	public List<Schedule> getSchedulesByUserId(Long userId) {
-		return scheduleRepository.findByUserId(userId);
+		// 기존: return scheduleRepository.findByUserId(userId);
+		// 수정: isCopied=false인 일정만 반환
+		return scheduleRepository.findByUserIdAndIsCopiedFalse(userId);
 	}
 
 	public Schedule getScheduleById(Long id) {
@@ -273,13 +275,15 @@ public class ScheduleService {
 
         Schedule newSchedule = new Schedule();
         newSchedule.setUser(newUser);
-        newSchedule.setTitle("복사본: " + originalSchedule.getTitle());
+        newSchedule.setTitle(originalSchedule.getTitle());
         newSchedule.setStartDate(originalSchedule.getStartDate());
         newSchedule.setEndDate(originalSchedule.getEndDate());
         newSchedule.setDeparture(originalSchedule.getDeparture());
         newSchedule.setArrival(originalSchedule.getArrival());
         newSchedule.setTransportType(originalSchedule.getTransportType());
-        newSchedule.setPublic(false); // 복사된 일정�� 기본적으로 비공개
+        newSchedule.setPublic(false); // 복사된 일정은 기본적으로 비공개
+        newSchedule.setCopied(true); // 복사본임을 명시
+        newSchedule.setCopiedFromId(originalSchedule.getId()); // 원본 id 저장
 
         if (originalSchedule.getPlaces() != null) {
             List<Place> newPlaces = originalSchedule.getPlaces().stream().map(originalPlace -> {
@@ -315,5 +319,31 @@ public class ScheduleService {
             .orElseThrow(() -> new RuntimeException("Schedule not found with id " + scheduleId));
         schedule.setDislikes(schedule.getDislikes() + 1);
         return scheduleRepository.save(schedule);
+    }
+
+    public List<ScheduleDTO> getSavedSchedulesByUser(Long userId) {
+        // 사용자가 찜한 일정들을 조회 (isCopied=true)
+        List<Schedule> savedSchedules = scheduleRepository.findByUserIdAndIsCopiedTrue(userId);
+        return savedSchedules.stream()
+            .map(ScheduleDTO::fromEntity)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteSavedSchedule(Long scheduleId, Long userId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+            .orElseThrow(() -> new RuntimeException("찜한 일정을 찾을 수 없습니다."));
+        
+        // 본인이 찜한 일정인지 확인
+        if (!schedule.getUser().getId().equals(userId)) {
+            throw new RuntimeException("삭제 권한이 없습니다.");
+        }
+        
+        // isCopied 필드로 찜한 일정 여부 확인
+        if (!schedule.isCopied()) {
+            throw new RuntimeException("찜한 일정이 아닙니다.");
+        }
+        
+        scheduleRepository.delete(schedule);
     }
 }

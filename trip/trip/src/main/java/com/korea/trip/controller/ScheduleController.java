@@ -199,4 +199,24 @@ public class ScheduleController {
 		Schedule updatedSchedule = scheduleService.dislikeSchedule(id);
 		return ResponseEntity.ok(ScheduleDTO.fromEntity(updatedSchedule));
 	}
+
+	@GetMapping("/saved/my")
+	public ResponseEntity<List<ScheduleDTO>> getMySavedSchedules(@CurrentUser UserPrincipal currentUser) {
+		try {
+			List<ScheduleDTO> savedSchedules = scheduleService.getSavedSchedulesByUser(currentUser.getId());
+			return ResponseEntity.ok(savedSchedules);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
+	@DeleteMapping("/saved/{id}")
+	public ResponseEntity<?> deleteSavedSchedule(@PathVariable("id") Long id, @CurrentUser UserPrincipal currentUser) {
+		try {
+			scheduleService.deleteSavedSchedule(id, currentUser.getId());
+			return ResponseEntity.ok().build();
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
 }
