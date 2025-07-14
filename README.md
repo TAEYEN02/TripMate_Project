@@ -15,53 +15,7 @@
 ## 🔧 브랜치 전략
 - `main`: 배포용
 - `dev`: 개발 통합
-- `feature/*`: 기능별 브랜치 (ex. feature/login)
 
-## 🔑 커밋 컨벤션
-=> 이건 커밋할 때 메시지로 넣는거입니다.
-예를 들어  
-git add .   
-git commit -m "feat(auth): 로그인 기능 추가"  
-git push/n  
-이렇게요..  
-
-- [feat] 기능 추가
-- [fix] 버그 수정
-- [refactor] 리팩토링
-
-## ✏️ 협업 규칙
-- 커밋 컨벤션: [feat/fix/refactor] 내용 (#이슈번호)
-- feature 브랜치?
-- 동시에 작업한다고 해보면 각각 기능을 맡는데 여기에
-    - A는 로그인 기능
-    - B는 게시판 기능
-    - C는 여행지 추천 기능 ...  
-브랜치 이름	            하는 일  
-feature/login	          로그인 개발  
-feature/post	          게시판 개발  
-feature/recommend	      여행지 추천 기능 개발  
-
-- 이렇게 해서 각자 개발하고 이 작업이 다 끝나면 페이지 대로 dev 브런치로 Pull Request 보내서 병합할거라 꼭 이렇게 push pull 해주세요!  
-
-git checkout dev                    # 항상 dev 기준으로!  
-git checkout -b feature/login       # 브랜치 생성  
-git push origin feature/login       # 원격에 올리기   
-=> origin은 목적지 원격 저장소 이름 / dev 나 feature/*이건 브랜치 이름  
-
-## 🔁 작업 흐름 예시
-1. 최신 dev 가져오기  
-git checkout dev        # dev 브랜치로 이동해서, 여기서 새 브랜치를 만들 준비  
-git pull origin dev     # GitHub에서 최신 내용 받아오기  
-2. 기능 브랜치 만들기 (예: 로그인 기능)  
-git checkout -b feature/login      # dev 기준으로 새로운 기능 브랜치 만들기  
-3. 작업하고, 커밋하고, 푸시  
-git add .  
-git commit -m "[feat] 로그인 기능 구현"  
-git push origin feature/login       #만든 브랜치를 GitHub로 올리기  
-
-4. GitHub에서 Pull Request 보내기 (→ dev로!) => 우선 할 수 있으신분은 하되 잘 모르시겠으면 하지마새요!
-
-## 주의!
-![image](https://github.com/user-attachments/assets/ad94fdbb-26a4-407f-8e26-d324ba4aed88)
-![image](https://github.com/user-attachments/assets/fe9e48c5-b972-47b1-b761-d194803906f6)  
-이걸 dev로 바꿔서 push 하는겁니다! master은 아닙니다.
+## 👩‍💻 개발 목적 & 개발
+- 여행을 계획하다가 내가 원하는 여행지는 있지만 그 여행지에서의 계획을 세울때 어딜 가야할지 모르는 상황이 있었습니다. 그때 쉽게 여행 일정에 대한 일정을 보다 쉽게 설계하기 위해 만들기 시작하였습니다.
+- 여행 자동 추천은 kakaoAPI를 사용하여 하루 일정마다 아침점심저녁을 생각하여 3개와 여행지 최대 2개 그 주변 카페까지도 2개 추천 하는 방식으로 진행하였고, 거리 또한 멀리 잡힐 수 있기 때문에 거리또한 10km정도의 간격을 두고 잡아두었으며, 추천한 여행지가 있지만 자신이 원하는 스타일대로 스케줄을 잡을 수 있으며, 이 모든걸 다른 사람들과도 공유하여 국내 여행에 대한 계획에 좀더 편하게 다가갈 수 있도록 만들어졌습니다.
