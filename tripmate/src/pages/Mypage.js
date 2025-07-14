@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/index';
-import { fetchSchedules, fetchSharedSchedules, fetchUserProfile, shareSchedule, fetchSavedSchedules } from '../api/UserApi';
+import { fetchSchedules, fetchSharedSchedules, fetchUserProfile, shareSchedule, unshareSchedule, fetchSavedSchedules } from '../api/UserApi';
 import ScheduleEditModal from './ScheduleDetail'; // ScheduleEditModal을 import (export 필요)
 
 // Styled Components (omitted for brevity, they are correct)
@@ -284,6 +284,19 @@ function Mypage() {
     }
   };
 
+  const handleUnshare = async (scheduleId) => {
+    if (!isOwner) return;
+    if (window.confirm('이 여행 계획의 공유를 취소하시겠습니까?')) {
+      try {
+        await unshareSchedule(scheduleId);
+        alert('여행 계획 공유가 취소되었습니다.');
+        await fetchAllData(localUser);
+      } catch (error) {
+        alert(error.message || '여행 계획 공유 취소 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!isOwner) return;
     try {
@@ -311,12 +324,13 @@ function Mypage() {
     setEditModalOpen(true);
   };
   // 저장 후 localStorage 업데이트
-  const handleSaveEditedSchedule = (editedSchedule) => {
-    const prev = getLocalSavedSchedules();
-    const updated = prev.map(s => String(s.id) === String(editedSchedule.id) ? editedSchedule : s);
-    localStorage.setItem('mySavedSchedules', JSON.stringify(updated));
-    setLocalSavedSchedules(updated);
+  const handleSaveEditedSchedule = async (editedSchedule) => {
+    // localStorage 업데이트는 ScheduleDetail에서 이미 처리했으므로 여기서는 DB 동기화만 신경
+    // Mypage에서 ScheduleEditModal을 열었을 때, ScheduleDetail의 handleSaveEditedSchedule이 호출됨
+    // ScheduleDetail의 handleSaveEditedSchedule에서 이미 updateSchedule을 호출하고 fetchSchedule을 통해 최신화함
+    // 따라서 Mypage에서는 단순히 모달을 닫고, 필요하다면 전체 데이터를 다시 불러오면 됨
     setEditModalOpen(false);
+    await fetchAllData(localUser); // 모든 스케줄 데이터를 다시 불러와 최신화
   };
   // 내가 저장한 여행 계획 삭제 핸들러
   const handleDeleteSavedSchedule = async (scheduleId, isFromDB = false) => {
@@ -434,15 +448,16 @@ function Mypage() {
         mySchedules
           .filter(schedule => !schedule.isCopied)
           .map((schedule) => (
-            <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
+            <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}`)}>
               <div>
                 <h3>{schedule.title || '제목 없음'}</h3>
                 <p>날짜: {schedule.date}</p>
               </div>
               {isOwner && (
                 <ButtonGroup>
+                  <Button onClick={(e) => { e.stopPropagation(); alert(`${schedule.title || '제목 없음'} 일정을 현재 계획으로 설정합니다.`); navigate(`/myschedule/${schedule.id}`); }}>현재 계획으로 불러오기</Button>
                   <Button onClick={(e) => { e.stopPropagation(); handleShare(schedule.id); }}>공유</Button>
-                  <Button onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule.id); }}>삭제</Button>
+                  <Button onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule.id);}} style={{ background: '#dc3545' }} >삭제</Button>
                 </ButtonGroup>
               )}
             </ScheduleItem>
@@ -459,9 +474,15 @@ function Mypage() {
         <p>아직 공유한 여행 계획이 없습니다.</p>
       ) : (
         sharedSchedules.map((schedule) => (
-          <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
+          <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}`)}>
             <h3>{schedule.title || '제목 없음'}</h3>
             <p>날짜: {schedule.date}</p>
+            {isOwner && (
+              <ButtonGroup>
+                <Button onClick={(e) => { e.stopPropagation(); alert(`${schedule.title || '제목 없음'} 일정을 현재 계획으로 설정합니다.`); navigate(`/myschedule/${schedule.id}`); }}>현재 계획으로 불러오기</Button>
+                <Button onClick={(e) => { e.stopPropagation(); handleUnshare(schedule.id); }} style={{ background: '#dc3545' }}>공유 취소</Button>
+              </ButtonGroup>
+            )}
           </ScheduleItem>
         ))
       )}
@@ -476,7 +497,6 @@ function Mypage() {
       {/* DB에서 불러온 찜한 일정 */}
       {savedSchedules.length > 0 && (
         <>
-          <h3>서버에 저장된 찜한 여행</h3>
           {savedSchedules.map((schedule) => (
             <ScheduleItem key={`db-${schedule.id}`}>
               <div onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)} style={{ cursor: 'pointer' }}>
@@ -487,6 +507,7 @@ function Mypage() {
                 <p>여행 종료일: {schedule.endDate}</p>
               </div>
               <ButtonGroup>
+                <Button onClick={(e) => { e.stopPropagation(); alert(`${schedule.title || '제목 없음'} 일정을 현재 계획으로 설정합니다.`); navigate(`/myschedule/${schedule.id}`); }}>현재 계획으로 불러오기</Button>
                 <Button onClick={(e) => { e.stopPropagation(); handleDeleteSavedSchedule(schedule.id, true); }} style={{ background: '#dc3545' }}>
                   삭제하기
                 </Button>
@@ -510,6 +531,7 @@ function Mypage() {
                 <p>여행 기간: {schedule.days}일</p>
               </div>
               <ButtonGroup>
+                <Button onClick={(e) => { e.stopPropagation(); alert(`${schedule.title || '제목 없음'} 일정을 현재 계획으로 설정합니다.`); navigate(`/myschedule/${schedule.id}`); }}>현재 계획으로 불러오기</Button>
                 <Button onClick={(e) => { e.stopPropagation(); handleEditSavedSchedule(schedule); }}>수정</Button>
                 <Button onClick={(e) => { e.stopPropagation(); handleDeleteSavedSchedule(schedule.id, false); }} style={{ background: '#dc3545' }}>
                   삭제하기

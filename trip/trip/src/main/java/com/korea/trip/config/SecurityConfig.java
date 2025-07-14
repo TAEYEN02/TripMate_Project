@@ -54,7 +54,7 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeHttpRequests(authorize -> authorize
                 	    .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
-                	    .requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
+                	    .requestMatchers("/api/auth/login", "/api/auth/signup", "/api/users/find-password").permitAll()
                 	    .requestMatchers("/api/schedule/places/recommend").permitAll() // 추가
                 	    .requestMatchers("/api/auth/me").authenticated()
                 	    .requestMatchers("/api/users/**").authenticated()

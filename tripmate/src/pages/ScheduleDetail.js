@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useParams, useNavigate,useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import { updateSchedule } from '../api/UserApi';
+import { updateSchedule, getReviewsBySchedule, createReview, deleteReview } from '../api/UserApi'; // 리뷰 API 추가
 import dayjs from 'dayjs';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,8 +11,9 @@ import { FaThumbsUp, FaThumbsDown, FaShareSquare } from 'react-icons/fa';
 import ScheduleMapComponent from '../components/map/ScheduleMapComponent';
 import PlaceSearchBar from '../components/schedule/PlaceSearchBar';
 import { Button } from '../components/common/StyledComponents';
+import ReviewSection from '../components/review/ReviewSection'; // 리뷰 컴포넌트 import
 
-// --- Styled Components ---
+// --- Styled Components (기존과 동일) ---
 const Container = styled.div`
   display: flex;
   height: 90vh;
@@ -158,7 +159,7 @@ const SmallButton = styled(Button)`
   width: 60px;
 `;
 
-// --- Edit Modal Component ---
+// --- Edit Modal Component (기존과 동일) ---
 function getDates(startDate, endDate) {
   const dates = [];
   let currentDate = dayjs(startDate);
@@ -172,15 +173,29 @@ function getDates(startDate, endDate) {
 
 function ScheduleEditModal({ schedule, onClose, onSave }) {
   const [editableSchedule, setEditableSchedule] = useState(() => {
-    const sanitizedPlaces = (schedule.places || []).map(place => ({
+    const places = schedule.places || [];
+    let minDateStr = schedule.startDate;
+    let maxDateStr = schedule.endDate;
+
+    if (places.length > 0) {
+      const validDates = places.map(p => dayjs(p.date)).filter(d => d.isValid());
+      if (validDates.length > 0) {
+        const minDate = validDates.reduce((min, p) => p.isBefore(min) ? p : min, validDates[0]);
+        const maxDate = validDates.reduce((max, p) => p.isAfter(max) ? p : max, validDates[0]);
+        minDateStr = minDate.format('YYYY-MM-DD');
+        maxDateStr = maxDate.format('YYYY-MM-DD');
+      }
+    }
+
+    const sanitizedPlaces = places.map(place => ({
       ...place,
-      id: place.id || uuidv4(), // Ensure unique ID
-      date: place.date ? dayjs(place.date).format('YYYY-MM-DD') : dayjs(schedule.startDate).format('YYYY-MM-DD')
+      id: place.id || uuidv4(),
     }));
+
     return {
       ...schedule,
-      startDate: schedule.startDate ? dayjs(schedule.startDate).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
-      endDate: schedule.endDate ? dayjs(schedule.endDate).format('YYYY-MM-DD') : dayjs(schedule.startDate).format('YYYY-MM-DD'),
+      startDate: dayjs(minDateStr).isValid() ? minDateStr : dayjs().format('YYYY-MM-DD'),
+      endDate: dayjs(maxDateStr).isValid() ? maxDateStr : minDateStr,
       places: sanitizedPlaces
     };
   });
@@ -334,77 +349,53 @@ function ScheduleDetailFull() {
   const { id } = useParams();
   const location = useLocation();
   const fromMypage = new URLSearchParams(location.search).get('fromMypage') === 'true';
+  const fromSharedTrips = new URLSearchParams(location.search).get('fromSharedTrips') === 'true';
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [schedule, setSchedule] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
-   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(null);
 
-  // fromMypage일 때 localStorage에서 우선 불러오기
-  useEffect(() => {
-    if (fromMypage) {
-      const savedArr = JSON.parse(localStorage.getItem('mySavedSchedules') || '[]');
-      const found = savedArr.find(s => String(s.id) === String(id));
-      if (found) {
-        setSchedule(found);
-        setError(null);
-        setLoading(false);
-        // 날짜 탭 세팅
-        const dailyPlanForMap = (found.places || []).reduce((acc, place) => {
-          const date = place.date || found.startDate;
-          if (!acc[date]) acc[date] = [];
-          acc[date].push(place);
-          return acc;
-        }, {});
-        const initialTripDates = Object.keys(dailyPlanForMap).sort();
-        if (initialTripDates.length > 0) {
-          setSelectedDay(initialTripDates[0]);
-        }
-        return;
-      }
+  const setSanitizedSchedule = (rawData) => {
+    const sanitized = {
+      ...rawData,
+      isCopied: rawData.isCopied ?? rawData.copied,
+      startDate: rawData.startDate || dayjs().format('YYYY-MM-DD'),
+      endDate: rawData.endDate || rawData.startDate || dayjs().format('YYYY-MM-DD'),
+      places: rawData.places || [],
+      likes: rawData.likes || 0,
+      dislikes: rawData.dislikes || 0,
+      shared: rawData.shared || 0,
+    };
+    setSchedule(sanitized);
+
+    const dailyPlanForMap = (sanitized.places || []).reduce((acc, place) => {
+      const date = place.date || sanitized.startDate;
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(place);
+      return acc;
+    }, {});
+    const initialTripDates = Object.keys(dailyPlanForMap).sort();
+    if (initialTripDates.length > 0) {
+      setSelectedDay(initialTripDates[0]);
     }
-    // 없으면 서버에서 불러오기
-    fetchSchedule();
-    // eslint-disable-next-line
-  }, [id, fromMypage]);
+  };
 
-  const fetchSchedule = useCallback(async () => {
+  const fetchFromServer = useCallback(async () => {
     try {
       setLoading(true);
-      // 캐시 우회를 위해 쿼리스트링 추가
-      const res = await api.get(`/schedule/${id}?t=${Date.now()}`);
-      const rawData = res.data;
-      const sanitizedSchedule = {
-        ...rawData,
-        isCopied: rawData.isCopied ?? rawData.copied,
-        startDate: rawData.startDate || dayjs().format('YYYY-MM-DD'),
-        endDate: rawData.endDate || rawData.startDate || dayjs().format('YYYY-MM-DD'),
-        places: rawData.places || [],
-        likes: rawData.likes || 0,
-        dislikes: rawData.dislikes || 0,
-        shared: rawData.shared || 0,
-      };
-      setSchedule(sanitizedSchedule);
+      const [scheduleRes, reviewsRes] = await Promise.all([
+        api.get(`/schedule/${id}?t=${Date.now()}`),
+        getReviewsBySchedule(id)
+      ]);
+      setSanitizedSchedule(scheduleRes.data);
+      setReviews(reviewsRes);
       setError(null);
-
-      const dailyPlanForMap = (sanitizedSchedule.places || []).reduce((acc, place) => {
-        const date = place.date || sanitizedSchedule.startDate;
-        if (!acc[date]) {
-          acc[date] = [];
-        }
-        acc[date].push(place);
-        return acc;
-      }, {});
-      const initialTripDates = Object.keys(dailyPlanForMap).sort();
-      if (initialTripDates.length > 0) {
-        setSelectedDay(initialTripDates[0]);
-      }
-      console.log('상세페이지 schedule (fetch):', sanitizedSchedule);
     } catch (err) {
       setError('스케줄 정보를 불러오는데 실패했습니다.');
     } finally {
@@ -412,9 +403,40 @@ function ScheduleDetailFull() {
     }
   }, [id]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadData = async () => {
+      setLoading(true);
+      let scheduleData = null;
+
+      if (fromMypage) {
+        const savedArr = JSON.parse(localStorage.getItem('mySavedSchedules') || '[]');
+        scheduleData = savedArr.find(s => String(s.id) === String(id));
+      }
+
+      if (scheduleData) {
+        // 로컬 스토리지에서 찾은 경우
+        setSanitizedSchedule(scheduleData);
+        try {
+          const reviewsRes = await getReviewsBySchedule(id);
+          if (isMounted) setReviews(reviewsRes);
+        } catch (err) {
+          if (isMounted) setError('리뷰를 불러오는데 실패했습니다.');
+        } finally {
+          if (isMounted) setLoading(false);
+        }
+      } else {
+        // 서버에서 모든 데이터 가져오기
+        await fetchFromServer();
+      }
+    };
+
+    loadData();
+    return () => { isMounted = false; };
+  }, [id, fromMypage, fetchFromServer]);
+
   const handleUpdateSchedule = async (dataToSave) => {
     try {
-      // places와 dailyPlan 동기화
       let places = dataToSave.places;
       let dailyPlan = {};
       if (places && Array.isArray(places)) {
@@ -424,31 +446,43 @@ function ScheduleDetailFull() {
           dailyPlan[date].push(place);
         });
       }
-      const scheduleToSave = {
-        ...dataToSave,
-        places,
-        dailyPlan,
-      };
-      console.log('PUT /schedule/', id, '보내는 데이터:', scheduleToSave);
-      const resp = await updateSchedule(id, scheduleToSave);
-      console.log('서버 응답:', resp);
-      fetchSchedule(); // 서버에서 최신 데이터 받아오기
+      const scheduleToSave = { ...dataToSave, places, dailyPlan };
+      await updateSchedule(id, scheduleToSave);
+      fetchFromServer();
     } catch (error) {
-      console.error('Error updating schedule:', error);
       alert('스케줄 업데이트에 실패했습니다.');
+    }
+  };
+
+  const handleCreateReview = async (scheduleId, content) => {
+    try {
+      const newReview = await createReview(scheduleId, content);
+      setReviews(prev => [...prev, newReview]);
+    } catch (error) {
+      alert('리뷰 작성에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (window.confirm('정말로 이 리뷰를 삭제하시겠습니까?')) {
+      try {
+        await deleteReview(reviewId);
+        setReviews(prev => prev.filter(r => r.id !== reviewId));
+      } catch (error) {
+        alert('리뷰 삭제에 실패했습니다.');
+      }
     }
   };
 
   const handleCopySchedule = async () => {
     try {
-      // DB에 찜한 일정으로 저장 (copySchedule API 호출)
-      await api.post(`/schedule/copy/${schedule.id}`);
+      const res = await api.post(`/schedule/copy/${schedule.id}`);
+      setSchedule(prev => ({ ...prev, shared: res.data.shared }));
       alert('성공적으로 찜한 여행 일정에 추가되었습니다!');
       if (window.confirm('내가 찜한 여행계획으로 이동하시겠습니까?')) {
         navigate(`/user/${user?.userId}?tab=saved`);
       }
     } catch (error) {
-      // 서버에서 중복 에러 메시지 반환 시
       if (error.response && error.response.status === 500) {
         alert('이미 찜한 여행 일정입니다!');
       } else {
@@ -460,89 +494,59 @@ function ScheduleDetailFull() {
   const handleLike = async () => {
     try {
       const res = await api.post(`/schedule/${id}/like`);
-      setSchedule(prev => ({ ...prev, likes: res.data.likes }));
-      alert("좋아요!");
+      setSchedule(prev => ({ ...prev, likes: res.data.likes, dislikes: res.data.dislikes }));
     } catch (err) {
-      alert("좋아요 처리에 실패했습니다.");
-      fetchSchedule(); // Revert optimistic update on error
+      fetchFromServer();
     }
   };
 
   const handleDislike = async () => {
     try {
-      // This will be enabled once backend is ready
       const res = await api.post(`/schedule/${id}/dislike`);
-      setSchedule(prev => ({ ...prev, dislikes: res.data.dislikes }));
+      setSchedule(prev => ({ ...prev, likes: res.data.likes, dislikes: res.data.dislikes }));
       alert("싫어요!");
     } catch (err) {
       alert("싫어요 처리에 실패했습니다.");
-      fetchSchedule(); // Revert optimistic update on error
+      fetchFromServer();
     }
   };
 
   const isOwner = user && schedule && schedule.userId === user.userId;
 
-  // 저장된 일정 수정 핸들러 (fromMypage)
-const handleSaveEditedSchedule = async (editedSchedule) => {
-  try {
-    // places와 dailyPlan 동기화
-    let places = editedSchedule.places || [];
-    let dailyPlan = {};
-    places.forEach(place => {
-      const date = place.date || editedSchedule.startDate;
-      if (!dailyPlan[date]) dailyPlan[date] = [];
-      dailyPlan[date].push(place);
-    });
-
-    const scheduleToSave = {
-      ...editedSchedule,
-      places,
-      dailyPlan,
-    };
-
-    // localStorage 저장
-    const key = 'mySavedSchedules';
-    const prev = JSON.parse(localStorage.getItem(key) || '[]');
-    const updated = prev.map(s => String(s.id) === String(scheduleToSave.id) ? scheduleToSave : s);
-    localStorage.setItem(key, JSON.stringify(updated));
-    setSchedule(scheduleToSave);
-
-    // 서버 저장 (내 일정에 추가)
-    const payload = {
-      departure: scheduleToSave.departure,
-      arrival: scheduleToSave.arrival,
-      date: scheduleToSave.startDate || scheduleToSave.date,
-      days: scheduleToSave.days || 1,
-      transportType: scheduleToSave.transportType || scheduleToSave.goTransport?.split("|")[0] || "korail",
-      startTime: scheduleToSave.startTime,
-      endTime: scheduleToSave.endTime,
-      places: scheduleToSave.places,
-    };
-    console.log('서버로 보낼 payload:', payload);
-    const response = await api.post('/schedule', payload);
-    console.log('서버 응답:', response.data);
-
-    alert('내 일정에 저장되었습니다!');
-    setEditModalOpen(false);
-    if (window.confirm('마이페이지로 이동하시겠습니까?')) {
-      navigate(`/user/${user?.userId}?tab=my`);
+  const handleSaveEditedSchedule = async (editedSchedule) => {
+    try {
+      let places = editedSchedule.places || [];
+      let dailyPlan = {};
+      places.forEach(place => {
+        const date = place.date || editedSchedule.startDate;
+        if (!dailyPlan[date]) dailyPlan[date] = [];
+        dailyPlan[date].push(place);
+      });
+      const scheduleToSave = { ...editedSchedule, places, dailyPlan };
+      const key = 'mySavedSchedules';
+      const prev = JSON.parse(localStorage.getItem(key) || '[]');
+      const updated = prev.map(s => String(s.id) === String(scheduleToSave.id) ? scheduleToSave : s);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setSchedule(scheduleToSave);
+      await updateSchedule(editedSchedule.id, scheduleToSave);
+      alert('여행 계획이 성공적으로 업데이트되었습니다!');
+      setEditModalOpen(false);
+      fetchFromServer(); 
+      if (window.confirm('마이페이지로 이동하시겠습니까?')) {
+        navigate(`/user/${user?.userId}?tab=saved`);
+      }
+    } catch (error) {
+      alert('여행 계획 업데이트에 실패했습니다.');
     }
-  } catch (error) {
-    console.error('저장 실패:', error);
-    alert('내 일정 저장에 실패했습니다.');
-  }
-};
+  };
 
   if (loading) return <p>로딩 중...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
   if (!schedule) return <p>스케줄을 찾을 수 없습니다.</p>;
-  console.log('상세페이지 schedule (렌더링 직전):', schedule);
 
   const dailyPlanForMap = (schedule.places || []).reduce((acc, place) => {
     const date = place.date || schedule.startDate;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
+    if (!acc[date]) acc[date] = [];
     acc[date].push(place);
     return acc;
   }, {});
@@ -568,16 +572,6 @@ const handleSaveEditedSchedule = async (editedSchedule) => {
           <DetailSection>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Title>{schedule.title || '제목 없음'}</Title>
-              {!fromMypage && (
-                <Button onClick={() => saveScheduleToLocal(schedule)} style={{ background: '#2563eb', color: 'white' }}>
-                  내 여행계획에 저장하기
-                </Button>
-              )}
-              {fromMypage && (
-                <Button onClick={() => setEditModalOpen(true)} style={{ background: '#2563eb', color: 'white', marginLeft: 8 }}>
-                  수정하기
-                </Button>
-              )}
             </div>
             <p><strong>작성자:</strong> {schedule.username || '알 수 없음'}</p>
             <p><strong>기간:</strong> {schedule.startDate} ~ {schedule.endDate}</p>
@@ -588,26 +582,16 @@ const handleSaveEditedSchedule = async (editedSchedule) => {
               <ActionButton><FaShareSquare /> {schedule.shared}</ActionButton>
             </ActionButtons>
 
-            <div style={{marginTop: '1rem'}}>
-              {/* 직접 작성한 내 일정(작성자=본인)만 파란 수정 버튼 */}
-              {isOwner && !fromMypage && (
-                <Button onClick={() => setIsModalOpen(true)}>수정하기</Button>
+            <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem'}}>
+              {(isOwner || fromMypage) && !fromSharedTrips && (
+                <Button onClick={() => setEditModalOpen(true)} style={{ background: '#2563eb', color: 'white' }}>
+                  수정하기
+                </Button>
               )}
-              {/* 공유/찜한 일정 상세에서만: 기존 로컬 방식 버튼만 노출 */}
-              {user && fromMypage && (
-                <>
-                  <Button onClick={() => setEditModalOpen(true)} style={{ marginLeft: '0.5rem', background: '#2563eb', color: 'white' }}>수정하기</Button>
-                  {schedule.isCopied && (
-                    <Button onClick={() => handleSaveEditedSchedule(schedule)} style={{ marginLeft: '0.5rem', background: '#10b981', color: 'white' }}>내 일정에 바로 저장하기</Button>
-                  )}
-                </>
-              )}
-              {user && !fromMypage && isOwner && (
-                <Button onClick={() => setIsModalOpen(true)}>수정하기</Button>
-              )}
-              {/* 공유 여행지에서 찜하기 버튼 */}
-              {!isOwner && user && !fromMypage && (
-                <SmallButton onClick={handleCopySchedule} style={{ marginLeft: '0.5rem' }}>찜하기</SmallButton>
+              {user && !isOwner && !fromMypage && (
+                <Button onClick={handleCopySchedule} style={{ background: '#10b981', color: 'white' }}>
+                  내 여행계획에 저장하기
+                </Button>
               )}
             </div>
           </DetailSection>
@@ -635,21 +619,23 @@ const handleSaveEditedSchedule = async (editedSchedule) => {
               )}
             </DetailSection>
           )}
+          
+          {/* 리뷰 섹션 추가 */}
+          <ReviewSection 
+            reviews={reviews}
+            scheduleId={id}
+            onCreateReview={handleCreateReview}
+            onDeleteReview={handleDeleteReview}
+          />
+
         </RightSide>
       </Container>
 
-      {isModalOpen && (
-        <ScheduleEditModal
-          schedule={schedule}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleUpdateSchedule}
-        />
-      )}
-      {editModalOpen && fromMypage && (
+      {editModalOpen && (
         <ScheduleEditModal
           schedule={schedule}
           onClose={() => setEditModalOpen(false)}
-          onSave={handleSaveEditedSchedule}
+          onSave={fromMypage ? handleSaveEditedSchedule : handleUpdateSchedule}
         />
       )}
     </>

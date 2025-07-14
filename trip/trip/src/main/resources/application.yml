@@ -24,7 +24,9 @@ spring:
   web:
     resources:
        add-mappings: true
+  mail:
+    username: xodus021211@gmail.com # 여기에 구글 이메일 주소를 입력하세요.
+    password: fbvq ilcg lgbf tvth   # 여기에 구글 앱 비밀번호를 입력하세요.
 app:
-  jwtSecret: "z1X9F4pLq2NhB8vY7Wq3ReXs9Kw6MfDr7LpCvWxZSaGhJiUkLmNOpQrStUvWxYz1"
+  jwtSecret: "4z6B8E_a-r9T2w5y7x_d-fGjKlOnPqStVbYy_z-1s3u5w8x_A-D_F-H_J-L_N-P_R-T_V-X_Z-b_d-f_h-j"
   jwtExpirationInMs: 86400000
-
