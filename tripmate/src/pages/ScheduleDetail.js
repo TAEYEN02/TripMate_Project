@@ -365,7 +365,6 @@ function ScheduleDetailFull() {
         if (initialTripDates.length > 0) {
           setSelectedDay(initialTripDates[0]);
         }
-        console.log('상세페이지 schedule (localStorage):', found);
         return;
       }
     }
@@ -484,38 +483,55 @@ function ScheduleDetailFull() {
   const isOwner = user && schedule && schedule.userId === user.userId;
 
   // 저장된 일정 수정 핸들러 (fromMypage)
-  const handleSaveEditedSchedule = async (editedSchedule) => {
-    try {
-      // places와 dailyPlan 동기화
-      let places = editedSchedule.places;
-      if (!places || !Array.isArray(places)) {
-        places = [];
-      }
-      // ScheduleCreateRequest에 맞는 필드만 추출
-      const payload = {
-        departure: editedSchedule.departure,
-        arrival: editedSchedule.arrival,
-        date: editedSchedule.startDate || editedSchedule.date,
-        days: editedSchedule.days || 1,
-        transportType: editedSchedule.transportType || editedSchedule.goTransport?.split("|")[0] || "korail",
-        startTime: editedSchedule.startTime,
-        endTime: editedSchedule.endTime,
-        places: places,
-      };
-      // 실제로 어떤 값이 들어가는지 로그 출력
-      console.log('내 일정 저장 payload:', payload);
-      const response = await api.post('/schedule', payload);
-      console.log('내 일정 저장 성공:', response.data);
-      setEditModalOpen(false);
-      alert('내 일정에 저장되었습니다!');
-      if (window.confirm('마이페이지로 이동하시겠습니까?')) {
-        navigate(`/user/${user?.userId}?tab=my`);
-      }
-    } catch (error) {
-      console.error('내 일정 저장 실패:', error);
-      alert('내 일정 저장에 실패했습니다.');
+const handleSaveEditedSchedule = async (editedSchedule) => {
+  try {
+    // places와 dailyPlan 동기화
+    let places = editedSchedule.places || [];
+    let dailyPlan = {};
+    places.forEach(place => {
+      const date = place.date || editedSchedule.startDate;
+      if (!dailyPlan[date]) dailyPlan[date] = [];
+      dailyPlan[date].push(place);
+    });
+
+    const scheduleToSave = {
+      ...editedSchedule,
+      places,
+      dailyPlan,
+    };
+
+    // localStorage 저장
+    const key = 'mySavedSchedules';
+    const prev = JSON.parse(localStorage.getItem(key) || '[]');
+    const updated = prev.map(s => String(s.id) === String(scheduleToSave.id) ? scheduleToSave : s);
+    localStorage.setItem(key, JSON.stringify(updated));
+    setSchedule(scheduleToSave);
+
+    // 서버 저장 (내 일정에 추가)
+    const payload = {
+      departure: scheduleToSave.departure,
+      arrival: scheduleToSave.arrival,
+      date: scheduleToSave.startDate || scheduleToSave.date,
+      days: scheduleToSave.days || 1,
+      transportType: scheduleToSave.transportType || scheduleToSave.goTransport?.split("|")[0] || "korail",
+      startTime: scheduleToSave.startTime,
+      endTime: scheduleToSave.endTime,
+      places: scheduleToSave.places,
+    };
+    console.log('서버로 보낼 payload:', payload);
+    const response = await api.post('/schedule', payload);
+    console.log('서버 응답:', response.data);
+
+    alert('내 일정에 저장되었습니다!');
+    setEditModalOpen(false);
+    if (window.confirm('마이페이지로 이동하시겠습니까?')) {
+      navigate(`/user/${user?.userId}?tab=my`);
     }
-  };
+  } catch (error) {
+    console.error('저장 실패:', error);
+    alert('내 일정 저장에 실패했습니다.');
+  }
+};
 
   if (loading) return <p>로딩 중...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
@@ -552,6 +568,16 @@ function ScheduleDetailFull() {
           <DetailSection>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Title>{schedule.title || '제목 없음'}</Title>
+              {!fromMypage && (
+                <Button onClick={() => saveScheduleToLocal(schedule)} style={{ background: '#2563eb', color: 'white' }}>
+                  내 여행계획에 저장하기
+                </Button>
+              )}
+              {fromMypage && (
+                <Button onClick={() => setEditModalOpen(true)} style={{ background: '#2563eb', color: 'white', marginLeft: 8 }}>
+                  수정하기
+                </Button>
+              )}
             </div>
             <p><strong>작성자:</strong> {schedule.username || '알 수 없음'}</p>
             <p><strong>기간:</strong> {schedule.startDate} ~ {schedule.endDate}</p>

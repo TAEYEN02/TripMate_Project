@@ -318,7 +318,6 @@ function Mypage() {
     setLocalSavedSchedules(updated);
     setEditModalOpen(false);
   };
-
   // 내가 저장한 여행 계획 삭제 핸들러
   const handleDeleteSavedSchedule = async (scheduleId, isFromDB = false) => {
     if (!window.confirm('정말로 이 여행 계획을 삭제하시겠습니까?')) return;
@@ -413,91 +412,129 @@ function Mypage() {
       )}
 
       <TabContainer>
-        <TabButton active={activeTab === 'my'} onClick={() => setActiveTab('my')}>
-          작성한 여행 계획
-        </TabButton>
-        <TabButton active={activeTab === 'shared'} onClick={() => setActiveTab('shared')}>
-          내가 공유한 여행 계획
-        </TabButton>
-        <TabButton active={activeTab === 'saved'} onClick={() => setActiveTab('saved')}>
-          내가 찜한 여행 계획
-        </TabButton>
-      </TabContainer>
-      <ScheduleContainer>
-        {activeTab === 'my' && (
-          <ScheduleSection>
-            <h2>{paramUserId ? '작성한 여행 계획' : '내 여행 계획'}</h2>
-            {mySchedules.filter(schedule => !schedule.isCopied).length === 0 ? (
-              <p>아직 작성된 여행 계획이 없습니다.</p>
-            ) : (
-              mySchedules
-                .filter(schedule => !schedule.isCopied)
-                .map((schedule) => (
-                  <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
-                    <div>
-                      <h3>{schedule.title || '제목 없음'}</h3>
-                      <p>날짜: {schedule.date}</p>
-                    </div>
-                    {isOwner && (
-                      <ButtonGroup>
-                        <Button onClick={(e) => { e.stopPropagation(); handleShare(schedule.id); }}>공유</Button>
-                        <Button onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule.id); }}>삭제</Button>
-                      </ButtonGroup>
-                    )}
-                  </ScheduleItem>
-                ))
-            )}
-          </ScheduleSection>
-        )}
-        {activeTab === 'shared' && (
-          <ScheduleSection>
-            <h2>내가 공유한 여행 계획</h2>
-            {sharedSchedules.length === 0 ? (
-              <p>아직 공유한 여행 계획이 없습니다.</p>
-            ) : (
-              sharedSchedules.map((schedule) => (
-                <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
-                  <h3>{schedule.title || '제목 없음'}</h3>
-                  <p>날짜: {schedule.date}</p>
-                </ScheduleItem>
-              ))
-            )}
-          </ScheduleSection>
-        )}
-        {activeTab === 'saved' && (
-          <ScheduleSection>
-            <h2>내가 찜한 여행 계획</h2>
-            {/* DB에서 불러온 찜한 일정만 표시 */}
-            {savedSchedules.length > 0 ? (
+  <TabButton active={activeTab === 'my'} onClick={() => setActiveTab('my')}>
+    작성한 여행 계획
+  </TabButton>
+  <TabButton active={activeTab === 'shared'} onClick={() => setActiveTab('shared')}>
+    내가 공유한 여행 계획
+  </TabButton>
+  <TabButton active={activeTab === 'saved'} onClick={() => setActiveTab('saved')}>
+    내가 저장한 여행 계획
+  </TabButton>
+</TabContainer>
+
+<ScheduleContainer>
+  {/* 1. 작성한 여행 계획 */}
+  {activeTab === 'my' && (
+    <ScheduleSection>
+      <h2>{paramUserId ? '작성한 여행 계획' : '내 여행 계획'}</h2>
+      {mySchedules.filter(schedule => !schedule.isCopied).length === 0 ? (
+        <p>아직 작성된 여행 계획이 없습니다.</p>
+      ) : (
+        mySchedules
+          .filter(schedule => !schedule.isCopied)
+          .map((schedule) => (
+            <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
               <div>
-                {savedSchedules.map((schedule) => (
-                  <ScheduleItem key={`db-${schedule.id}`}>
-                    <div onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)} style={{ cursor: 'pointer' }}>
-                      <h3>{schedule.title || '제목 없음'}</h3>
-                      <p>출발지: {schedule.departure}</p>
-                      <p>도착지: {schedule.arrival}</p>
-                      <p>여행 시작일: {schedule.startDate || schedule.date}</p>
-                      <p>여행 종료일: {schedule.endDate}</p>
-                    </div>
-                    <ButtonGroup>
-                      <Button onClick={(e) => { e.stopPropagation(); handleDeleteSavedSchedule(schedule.id, true); }} style={{ background: '#dc3545' }}>삭제하기</Button>
-                    </ButtonGroup>
-                  </ScheduleItem>
-                ))}
+                <h3>{schedule.title || '제목 없음'}</h3>
+                <p>날짜: {schedule.date}</p>
               </div>
-            ) : (
-              <p>아직 찜한 여행 계획이 없습니다.</p>
-            )}
-            {editModalOpen && editTargetSchedule && (
-              <ScheduleEditModal
-                schedule={editTargetSchedule}
-                onClose={() => setEditModalOpen(false)}
-                onSave={handleSaveEditedSchedule}
-              />
-            )}
-          </ScheduleSection>
-        )}
-      </ScheduleContainer>
+              {isOwner && (
+                <ButtonGroup>
+                  <Button onClick={(e) => { e.stopPropagation(); handleShare(schedule.id); }}>공유</Button>
+                  <Button onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule.id); }}>삭제</Button>
+                </ButtonGroup>
+              )}
+            </ScheduleItem>
+          ))
+      )}
+    </ScheduleSection>
+  )}
+
+  {/* 2. 공유한 여행 계획 */}
+  {activeTab === 'shared' && (
+    <ScheduleSection>
+      <h2>내가 공유한 여행 계획</h2>
+      {sharedSchedules.length === 0 ? (
+        <p>아직 공유한 여행 계획이 없습니다.</p>
+      ) : (
+        sharedSchedules.map((schedule) => (
+          <ScheduleItem key={schedule.id} onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)}>
+            <h3>{schedule.title || '제목 없음'}</h3>
+            <p>날짜: {schedule.date}</p>
+          </ScheduleItem>
+        ))
+      )}
+    </ScheduleSection>
+  )}
+
+  {/* 3. 저장한 여행 계획 (localStorage + DB) */}
+  {activeTab === 'saved' && (
+    <ScheduleSection>
+      <h2>내가 저장한 여행 계획</h2>
+
+      {/* DB에서 불러온 찜한 일정 */}
+      {savedSchedules.length > 0 && (
+        <>
+          <h3>서버에 저장된 찜한 여행</h3>
+          {savedSchedules.map((schedule) => (
+            <ScheduleItem key={`db-${schedule.id}`}>
+              <div onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)} style={{ cursor: 'pointer' }}>
+                <h3>{schedule.title || '제목 없음'}</h3>
+                <p>출발지: {schedule.departure}</p>
+                <p>도착지: {schedule.arrival}</p>
+                <p>여행 시작일: {schedule.startDate || schedule.date}</p>
+                <p>여행 종료일: {schedule.endDate}</p>
+              </div>
+              <ButtonGroup>
+                <Button onClick={(e) => { e.stopPropagation(); handleDeleteSavedSchedule(schedule.id, true); }} style={{ background: '#dc3545' }}>
+                  삭제하기
+                </Button>
+              </ButtonGroup>
+            </ScheduleItem>
+          ))}
+        </>
+      )}
+
+      {/* localStorage에 저장된 일정 */}
+      {localSavedSchedules.length > 0 && (
+        <>
+          <h3>내 브라우저에 저장된 여행</h3>
+          {localSavedSchedules.map((schedule) => (
+            <ScheduleItem key={`local-${schedule.id}`}>
+              <div onClick={() => navigate(`/schedule/${schedule.id}?fromMypage=true`)} style={{ cursor: 'pointer' }}>
+                <h3>{schedule.title || '제목 없음'}</h3>
+                <p>출발지: {schedule.departure}</p>
+                <p>도착지: {schedule.arrival}</p>
+                <p>여행 시작일: {schedule.startDate || schedule.date}</p>
+                <p>여행 기간: {schedule.days}일</p>
+              </div>
+              <ButtonGroup>
+                <Button onClick={(e) => { e.stopPropagation(); handleEditSavedSchedule(schedule); }}>수정</Button>
+                <Button onClick={(e) => { e.stopPropagation(); handleDeleteSavedSchedule(schedule.id, false); }} style={{ background: '#dc3545' }}>
+                  삭제하기
+                </Button>
+              </ButtonGroup>
+            </ScheduleItem>
+          ))}
+        </>
+      )}
+
+      {savedSchedules.length === 0 && localSavedSchedules.length === 0 && (
+        <p>아직 저장한 여행 계획이 없습니다.</p>
+      )}
+
+      {/* 수정 모달 */}
+      {editModalOpen && editTargetSchedule && (
+        <ScheduleEditModal
+          schedule={editTargetSchedule}
+          onClose={() => setEditModalOpen(false)}
+          onSave={handleSaveEditedSchedule}
+        />
+      )}
+    </ScheduleSection>
+  )}
+</ScheduleContainer>
     </MypageContainer>
   );
 }
