@@ -118,3 +118,30 @@ export const updateSchedule = async (scheduleId, scheduleData) => {
         throw error;
     }
 };
+
+// 찜한 일정 목록 조회
+export const fetchSavedSchedules = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        console.warn("🚫 토큰 없음, fetchSavedSchedules 중단");
+        return [];
+    }
+
+    try {
+        const response = await api.get('/schedule/saved/my', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        console.log("찜한 일정 응답 데이터:", response.data);
+
+        if (!Array.isArray(response.data)) {
+            throw new Error('찜한 일정 데이터가 올바르지 않습니다.');
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error("🚨 fetchSavedSchedules 에러:", error);
+        throw error;
+    }
+};
