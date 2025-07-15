@@ -8,6 +8,8 @@ import com.korea.trip.repositories.UserRepository;
 import com.korea.trip.config.JwtTokenProvider;
 import com.korea.trip.service.CustomUserDetailsService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,8 @@ import java.util.UUID;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private AuthenticationManager authenticationManager;
 
@@ -50,13 +54,25 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
-        // 사용자 ID로 사용자 정보 조회
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(loginRequest.getUserId());
-
-        // 비밀번호 확인
-        if (!passwordEncoder.matches(loginRequest.getPassword(), userDetails.getPassword())) {
+        
+        Optional<User> userOptional = userRepository.findByUserId(loginRequest.getUserId());
+        if (userOptional.isEmpty()) {
+            logger.warn("Login attempt for non-existent user: {}", loginRequest.getUserId());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
+
+        User user = userOptional.get();
+        logger.info("Attempting login for user: {}. Stored password hash: {}", user.getUserId(), user.getPassword());
+
+        // 비밀번호 확인
+        boolean passwordMatches = passwordEncoder.matches(loginRequest.getPassword(), user.getPassword());
+        logger.info("Password match result for user {}: {}", user.getUserId(), passwordMatches);
+
+        if (!passwordMatches) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(loginRequest.getUserId());
 
         // 인증 객체 생성
         Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -68,7 +84,6 @@ public class AuthController {
         String jwt = tokenProvider.generateToken(authentication);
         
         // 사용자 정보와 토큰을 함께 반환
-        User user = userRepository.findByUserId(loginRequest.getUserId()).get();
         return ResponseEntity.ok(Map.of(
             "token", jwt,
             "user", UserDto.from(user)
@@ -81,8 +96,8 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Error: UserId is already taken!");
         }
 
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity.badRequest().body("Error: Email is already in use!");
+        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+            return ResponseEntity.badRequest().body("Error: Username is already taken!");
         }
 
         // Creating user's account
@@ -96,6 +111,20 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok("User registered successfully!");
+    }
+
+    @PostMapping("/check-userid")
+    public ResponseEntity<?> checkUserId(@RequestBody Map<String, String> body) {
+        String userId = body.get("userId");
+        boolean exists = userRepository.existsByUserId(userId);
+        return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    @PostMapping("/check-username")
+    public ResponseEntity<?> checkUsername(@RequestBody Map<String, String> body) {
+        String username = body.get("username");
+        boolean exists = userRepository.existsByUsername(username);
+        return ResponseEntity.ok(Map.of("exists", exists));
     }
 
     @PostMapping("/find-id")
@@ -140,39 +169,5 @@ public class AuthController {
         }
 
         return ResponseEntity.ok("Temporary password has been sent to your email.");
-    }
-
-    @Transactional
-    @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(Authentication authentication, @RequestBody Map<String, String> body) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String userId = userDetails.getUsername();
-
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Update username if provided
-        if (body.containsKey("username")) {
-            user.setUsername(body.get("username"));
-        }
-
-        // Update email if provided
-        if (body.containsKey("email")) {
-            user.setEmail(body.get("email"));
-        }
-
-        // Update password if provided
-        if (body.containsKey("password")) {
-            String newPassword = body.get("password");
-            if (newPassword != null && !newPassword.isEmpty()) {
-                user.setPassword(passwordEncoder.encode(newPassword));
-                // If password is changed, it's no longer a temporary one
-                user.setTemporaryPassword(false);
-            }
-        }
-
-        userRepository.save(user);
-
-        return ResponseEntity.ok("Profile updated successfully");
     }
 }

@@ -248,7 +248,7 @@ function Mypage() {
     if (!isOwner) return;
     if (window.confirm('정말로 회원 탈퇴를 하시겠습니까?')) {
       try {
-        await api.delete('/auth/withdraw');
+        await api.delete('/users/me');
         logout();
         alert('회원 탈퇴가 완료되었습니다.');
         navigate('/');
