@@ -304,7 +304,7 @@ function Mypage() {
       if (editPassword) {
         updateData.password = editPassword;
       }
-      await api.put('/auth/profile', updateData);
+      await api.put('/users/me', updateData);
       alert('프로필 정보가 성공적으로 업데이트되었습니다.');
       
       // Correctly reload the profile and all associated data

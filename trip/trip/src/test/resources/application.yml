@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+
+# Provide dummy values for all other required properties for the test context to load
+korail:
+  service-key: "dummy-key"
+bus:
+  service-key: "dummy-key"
+kakao:
+  api-key: "dummy-key"
+app:
+  jwtSecret: "dummy-jwt-secret-key-for-testing-purposes-only"
+  jwtExpirationInMs: 86400000
+mail:
+  username: "dummy@test.com"
+  password: "dummy-password"
