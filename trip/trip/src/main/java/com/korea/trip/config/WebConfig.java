@@ -14,6 +14,16 @@ import java.io.IOException;
 public class WebConfig implements WebMvcConfigurer {
 
 	@Override
+	public void addCorsMappings(CorsRegistry registry) {
+		registry.addMapping("/**")
+				.allowedOrigins("*")
+				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+				.allowedHeaders("*")
+				.allowCredentials(false)
+				.maxAge(3600);
+	}
+
+	@Override
 	public void addResourceHandlers(ResourceHandlerRegistry registry) {
 		registry.addResourceHandler("/**").addResourceLocations("classpath:/static/").resourceChain(true)
 				.addResolver(new PathResourceResolver() {
